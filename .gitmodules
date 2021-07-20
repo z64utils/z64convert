@@ -1,0 +1,6 @@
+[submodule "gfxasm"]
+	path = gfxasm
+	url = https://github.com/z64me/gfxasm
+[submodule "wowlib"]
+	path = wowlib
+	url = https://github.com/z64me/wowlib
