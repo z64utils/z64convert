@@ -1392,6 +1392,10 @@ void *zobj_writeDlist(
 	 * pass 1: write vertex buffers
 	 * pass 2: write display list
 	 */
+
+	struct cvBf Obf = { 0 };
+	int32_t firstV = 0;
+
 	for (int pass = passStart; pass <= passEnd; ++pass)
 	{
 		Gfx gfxLast = {0};
@@ -1435,23 +1439,21 @@ void *zobj_writeDlist(
 		void *state_change(struct compvert *Ov)
 		{
 			struct cvBf bf = Ov->bf.bf;
-			/* TODO FIXME change in vertex color mode */
-			#if 0 /* FIXME this either works, or almost works... */
-			if ((v->subgroup & CV_ISCOLOR)
-				!= (Ov->subgroup & CV_ISCOLOR)
-			)
-			{
+			
+			if (bf.useColor != Obf.useColor && firstV != 0) {
 				Gfx gfx;
 				Gfx *p = &gfx;
 				int setbits = 0;
-				if ((Ov->subgroup & CV_ISCOLOR) == 0)
+				if ((bf.useColor) == 0)
 					setbits = G_LIGHTING;
 				/* toggle vertex colors */
 				gSPGeometryMode(p++, G_LIGHTING, setbits);
 				vfput32(bin, gfx.hi);
 				vfput32(bin, gfx.lo);
 			}
-			#endif
+			firstV = 1;
+			Obf = bf;
+			
 			/* change in vertex weight */
 			//debugf("do a state change %d vs %d\n", v - vbuf, Ov - vbuf);
 			if (bf.matrixId != prevLimb
