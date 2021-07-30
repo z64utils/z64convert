@@ -1393,9 +1393,6 @@ void *zobj_writeDlist(
 	 * pass 2: write display list
 	 */
 
-	struct cvBf Obf = { 0 };
-	int32_t firstV = 0;
-
 	for (int pass = passStart; pass <= passEnd; ++pass)
 	{
 		Gfx gfxLast = {0};
@@ -1406,6 +1403,8 @@ void *zobj_writeDlist(
 		int prevLimb = matrixBone;
 		int prevPbody = -1;
 		int isPbody = 0; /* is physics body */
+		struct cvBf Obf = { 0 };
+		int firstV = 0;
 		
 		/* is physics body */
 		if (g->bone
