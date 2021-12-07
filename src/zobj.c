@@ -992,7 +992,7 @@ static void *mtl_gbi_vars(struct objex_material *mtl, char *gbi)
 		
 		if (g == gCurrentGroup)
 			return errmsg(
-				"'%s' contains self-referential pointer via material '%s'"
+				"'%s' contains self-referential branch by way of material '%s'"
 				, name, mtl->name
 			);
 		
