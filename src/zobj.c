@@ -21,6 +21,8 @@
 /* external dependencies */
 #include "n64texconv.h"
 
+struct objex_g *gCurrentGroup = 0;
+
 #define VBUF_MAX 32
 
 static FILE *getDocs(struct objex *obj)
@@ -44,7 +46,7 @@ void objexUdataFree(void *udata_)
 	
 	free(udata);
 };
-struct zobjProxyArray *zobjProxyArray_new(char *name, int num)
+struct zobjProxyArray *zobjProxyArray_new(const char *name, int num)
 {
 	struct zobjProxyArray *proxy;
 	
@@ -988,6 +990,12 @@ static void *mtl_gbi_vars(struct objex_material *mtl, char *gbi)
 		if (!(g = objex_g_find(objex, name)))
 			return errmsg("'%s' group not found", name);
 		
+		if (g == gCurrentGroup)
+			return errmsg(
+				"'%s' contains self-referential pointer via material '%s'"
+				, name, mtl->name
+			);
+		
 		memset(ss, ' ', end - ss);
 		sprintf(name, "0x%04X%04X", 0xDEAD, g->index);
 		memcpy(ss, name, strlen(name));
@@ -1272,6 +1280,8 @@ void *zobj_writeDlist(
 {
 	if (!g/* || g->udata*/)
 		return success;
+	
+	gCurrentGroup = g;
 	
 	/* empty group */
 	if (!g->fNum)
@@ -2045,7 +2055,7 @@ void zobjProxyArray_unnest(
 	vfseek(bin, 0, SEEK_END);
 }
 
-void zobjProxyArray_print(
+void *zobjProxyArray_print(
 	FILE *docs
 	, VFILE *bin
 	, struct zobjProxyArray *proxyArray
@@ -2063,10 +2073,25 @@ void zobjProxyArray_print(
 		, Canitize(proxyArray->name, 0)
 	);
 	for (i = 0; i < proxyArray->num; ++i)
+	{
+		uint32_t unnested = unnest_de(bin, array[i], baseOfs);
+		
 		fprintf(docs, "\n\t""0x%08X, 0x%08X,"
-			, 0xDE010000, unnest_de(bin, array[i], baseOfs)
+			, 0xDE010000, unnested
 		);
+		
+		if (!unnested)
+		{
+			fprintf(docs, " /* ERROR! */");
+			/*return errmsg(
+				"proxy array '%s' contains an element resolving to 0"
+				, proxyArray->name
+			);*/
+		}
+	}
 	fprintf(docs, "\n};\n");
+	
+	return success;
 }
 
 void *zobj_writeSkeleton(

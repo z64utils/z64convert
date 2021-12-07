@@ -15,7 +15,12 @@
 #define DSTDERR docs
 
 /* revisions:
- * rev 0
+ * v1.0.2
+    * better circular dependency detection (bug report by Zeldaboy14)
+    * QOL improvement on proxy skeleton array output: report empty items
+ * v1.0.1
+    * dynamic vertexshading mode implementation is now complete (rankaisija)
+ * v1.0.0 rev 0
     * added --silent argument
     * added --print-palettes argument for printing palettes
  */
@@ -926,7 +931,8 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 		struct zobjProxyArray *p = proxyArrayList[i];
 		/* unnesting no longer necessary? leave it this way for safety */
 		zobjProxyArray_unnest(zobj, p, baseOfs);
-		zobjProxyArray_print(docs, zobj, p, baseOfs);
+		if (!zobjProxyArray_print(docs, zobj, p, baseOfs))
+			fail(zobj_errmsg());
 		zobjProxyArray_free(p);
 	}
 	

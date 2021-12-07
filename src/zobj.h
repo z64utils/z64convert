@@ -63,7 +63,7 @@ struct zobjProxyArray
 	uint32_t *array; /* contains num items */
 	int num; /* num proxies */
 };
-void zobjProxyArray_print(
+void *zobjProxyArray_print(
 	FILE *docs
 	, VFILE *bin
 	, struct zobjProxyArray *proxyArray
