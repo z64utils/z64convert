@@ -193,6 +193,7 @@
 #define G_TEXTURE_GEN                 (gI_(0b1)<<18)
 #define G_TEXTURE_GEN_LINEAR          (gI_(0b1)<<19)
 #define G_LOD                         (gI_(0b1)<<20)
+#define G_LIGHTING_POSITIONAL         (gI_(0b1)<<22)
 
 /* geometry mode for fast3d */
 #if defined(F3D_GBI)
