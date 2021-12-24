@@ -1,5 +1,5 @@
 #define  NAME     "z64convert"
-#define  VERSION  "1.0.1"
+#define  VERSION  "1.0.2"
 #define  AUTHOR   "<z64.me>"
 
 extern const char *z64convert(
