@@ -217,7 +217,7 @@ int wow_main(argc, argv)
 		wowGui_infof("success!");
 		
 		/* retrieve docs as 0-term'd string */
-		document_define_header(docs);
+		document_mergeDefineHeader(docs);
 		docs_sz = ftell(docs);
 		if (!(docs_str = malloc(docs_sz + 1)))
 		{
@@ -242,6 +242,8 @@ int wow_main(argc, argv)
 		fprintf(stdout, "\n");
 		
 		/* display output as window */
+		gui_output(docs_str);
+		
 		gui_output(docs_str);
 		
 		/* cleanup */

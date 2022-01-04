@@ -319,17 +319,30 @@ const char *z64convert(
 	/* allocates and initializes objexUdata */
 	zobj_initObjex(obj, baseOfs, docs);
 	
+	#if 0 // Do not see this as necessary, Objex2 gives errors for this already
 	if (obj->softinfo.animation_framerate
 		&& !streq(obj->softinfo.animation_framerate, "20")
 		&& obj->anim
-	)
-		fprintf(docs,
+	) {	
+		document_assign(
+			NULL,
 			"/* WARNING:\n"
 			" * your 3D software is set to %sfps, so the converted\n"
 			" * animations may run faster or slower than expected\n"
-			" */\n"
-			, obj->softinfo.animation_framerate
+			" */\n",
+			strtol(obj->softinfo.animation_framerate, NULL, 10),
+			DOC_INT
 		);
+		// fprintf(docs,
+		// 	"/* WARNING:\n"
+		// 	" * your 3D software is set to %sfps, so the converted\n"
+		// 	" * animations may run faster or slower than expected\n"
+		// 	" */\n"
+		// 	, obj->softinfo.animation_framerate
+		// );
+	}
+	#endif
+	
 	
 	/* load and process textures and palettes */
 	if (
@@ -498,9 +511,15 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 				fail("error: '%s' too many joints", g->name);
 			}
 			/* print count */
-			fprintf(docs, "#define  JOINTCOUNT_%s  %d\n"
-				, Canitize(name, 1), idx
+			document_assign(
+				name,
+				NULL,
+				idx,
+				T_JOINTCOUNT
 			);
+			// fprintf(docs, "#define  JOINTCOUNT_%s  %d\n"
+			// 	, Canitize(name, 1), idx
+			// );
 			/* print init */
 			{
 				shape = 0x00; /* must be 0, means sphere */
@@ -775,7 +794,7 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 		if (!collision_write(zobj, g, baseOfs, &headOfs))
 			fail(collision_errmsg());
 
-		document_doc(
+		document_assign(
 			g->name + strlen("collision."),
 			NULL,
 			baseOfs + headOfs,

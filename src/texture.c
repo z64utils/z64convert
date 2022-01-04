@@ -853,7 +853,7 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 	// 	, Canitize(pathTail(tex->name), 1)
 	// 	, (int)udata->fileOfs + getBase(tex->objex)
 	// );
-	document_doc(
+	document_assign(
 		pathTail(tex->name),
 		NULL,
 		(int)udata->fileOfs + getBase(tex->objex),
@@ -886,7 +886,7 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 			// 	+ getBase(tex->objex)
 			// 	+ i * (udata->fileSz / udata->virtDiv))
 			// );
-			document_doc(
+			document_assign(
 				buffer,
 				NULL,
 				(int)(udata->fileOfs
@@ -943,7 +943,7 @@ void *texture_writePalette(VFILE *bin, struct objex_palette *pal)
 	color8 = pal->colors;
 	//fprintf(docs, "palette %08X (sz %d)\n", (int)pal->fileOfs, pal->colorsSize);
 	if (printPalettes)
-		document_doc(
+		document_assign(
 			int2str(pal->index),
 			NULL,
 			(int)pal->fileOfs + getBase(pal->objex),

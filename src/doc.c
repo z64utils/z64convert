@@ -10,7 +10,7 @@ typedef struct document_t {
 document_t* sDocumentHead;
 document_t* sDocumentCur;
 
-void document_doc(const char* textA, const char* textB, unsigned int offset, doctype_t type) {
+void document_assign(const char* textA, const char* textB, unsigned int offset, doctype_t type) {
 	if (sDocumentHead == NULL) {
 		sDocumentCur = sDocumentHead = calloc(1, sizeof(document_t));
 		assert(sDocumentCur != NULL);
@@ -54,7 +54,7 @@ void document_free() {
 	sDocumentHead = NULL;
 }
 
-void document_define_header(FILE* file) {
+void document_mergeDefineHeader(FILE* file) {
 	char* typeTable[] = {
 		"WOW_",
 		

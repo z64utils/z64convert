@@ -1133,7 +1133,7 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 		// 	, Canitize(mtl->name, 1)
 		// 	, (int)vftell(bin) + baseOfs
 		// );
-		document_doc(
+		document_assign(
 			mtl->name,
 			NULL,
 			(int)vftell(bin) + baseOfs,
@@ -1161,7 +1161,7 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 			// 	, buf
 			// 	, w
 			// );
-			document_doc(
+			document_assign(
 				mtl->name,
 				buf,
 				w,
@@ -1174,7 +1174,7 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 			// 	, buf
 			// 	, h
 			// );
-			document_doc(
+			document_assign(
 				mtl->name,
 				buf,
 				h,
@@ -1264,7 +1264,7 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 					 */
 					ofs = 0;
 					if (ex)
-						document_doc(
+						document_assign(
 							mtl->name,
 							ex,
 							(int)vftell(bin) + baseOfs + ofs,
@@ -1881,7 +1881,7 @@ void *zobj_writeDlist(
 			// 	, Canitize(g->name, 1)
 			// 	, (int)vftell(bin) + baseOfs
 			// );
-			document_doc(
+			document_assign(
 				g->name,
 				NULL,
 				(int)vftell(bin) + baseOfs,
@@ -1964,7 +1964,7 @@ void *zobj_writeDlist(
 		// 	, CanitizeProxy(g->name, 1)
 		// 	, n + baseOfs
 		// );
-		document_doc(
+		document_assign(
 			g->name,
 			NULL,
 			n + baseOfs,
@@ -2200,7 +2200,7 @@ void *zobj_writeSkeleton(
 	
 		/* proxy docs */
 		if (g->attrib && strstr(g->attrib, "NOSKEL") == 0)
-			document_doc(
+			document_assign(
 				g->name,
 				NULL,
 				(int)vftell(bin) + baseOfs,
@@ -2243,7 +2243,7 @@ void *zobj_writeSkeleton(
 					gUdata->dlistOffset = n;
 				
 					/* proxy docs */
-					document_doc(
+					document_assign(
 						g->name,
 						NULL,
 						n + baseOfs,
@@ -2354,7 +2354,7 @@ void *zobj_writeSkeleton(
 //		, "#define %s 0x%08X /* %s */\n"
 //		, sk->name, baseOfs + headOfs, sk->name
 //	);
-	document_doc(
+	document_assign(
 		sk->g->name,
 		NULL,
 		(int)baseOfs + headOfs,
@@ -2364,7 +2364,7 @@ void *zobj_writeSkeleton(
 	// 	, Canitize(sk->g->name, 1)
 	// 	, (int)baseOfs + headOfs
 	// );
-	document_doc(
+	document_assign(
 		sk->g->name,
 		"NUMBONES",
 		numBones,
@@ -2375,7 +2375,7 @@ void *zobj_writeSkeleton(
 	// 	, "NUMBONES"
 	// 	, numBones
 	// );
-	document_doc(
+	document_assign(
 		sk->g->name,
 		"NUMBONES_DT",
 		numBones + 1,
@@ -2709,7 +2709,7 @@ void *zobj_writeStdAnim(
 //	debugf("anim %08X : %s\n", (int)vftell(bin), anim->name);
 	if (one_animated_skeleton)
 	{
-		document_doc(
+		document_assign(
 			anim->name,
 			NULL,
 			(int)vftell(bin) + baseOfs,
@@ -2726,7 +2726,7 @@ void *zobj_writeStdAnim(
 	{
 		char skelName[1024];
 		strcpy(skelName, Canitize(anim->sk->name, 1));
-		document_doc(
+		document_assign(
 			skelName,
 			anim->name,
 			(int)vftell(bin) + baseOfs,

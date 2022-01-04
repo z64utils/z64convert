@@ -22,12 +22,13 @@ typedef enum {
 	T_ANIM,
 	T_PROXY,
 	T_COLL,
+	T_JOINTCOUNT,
 } doctype_t;
 
-void document_doc(const char* textA, const char* textB, unsigned int offset, doctype_t type);
+void document_assign(const char* textA, const char* textB, unsigned int offset, doctype_t type);
 void document_free();
 
-void document_define_header(FILE* file);
+void document_mergeDefineHeader(FILE* file);
 
 #endif
 

@@ -1,4 +1,6 @@
 .vscode/*
+bin/*
 *.cfg
 *.o
 *.exe
+z64convert-*
