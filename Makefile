@@ -29,8 +29,8 @@ default:
 
 clean:
 	@rm -f -r bin/**
-	@rm -f z64convert-cli.exe
-	@rm -f z64convert-gui.exe
+	@rm -f z64convert-cl*
+	@rm -f z64convert-gu*
 
 # lin-gui:
 # 	@gcc -o bin/release/z64convert-linux-gui -DZ64CONVERT_GUI $(FLAGS) `wowlib/deps/wow_gui_x11.sh`
