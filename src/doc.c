@@ -1,20 +1,24 @@
 #include "doc.h"
 
 typedef struct document_t {
-	char* text[2];
-	doctype_t    type;
+	char *text[2];
+	doctype_t type;
 	unsigned int offset;
-	struct document_t* next;
+	struct document_t *next;
 } document_t;
 
-document_t* sDocumentHead;
-document_t* sDocumentCur;
+document_t *sDocumentHead;
+document_t *sDocumentCur;
 
-void document_assign(const char* textA, const char* textB, unsigned int offset, doctype_t type) {
-	if (sDocumentHead == NULL) {
+void document_assign(const char *textA, const char *textB, unsigned int offset, doctype_t type)
+{
+	if (sDocumentHead == NULL)
+	{
 		sDocumentCur = sDocumentHead = calloc(1, sizeof(document_t));
 		assert(sDocumentCur != NULL);
-	} else {
+	}
+	else
+	{
 		sDocumentCur->next = calloc(1, sizeof(document_t));
 		assert(sDocumentCur->next != NULL);
 		sDocumentCur = sDocumentCur->next;
@@ -28,21 +32,28 @@ void document_assign(const char* textA, const char* textB, unsigned int offset, 
 	if (textB)
 		sDocumentCur->text[1] = strdup(textB);
 	
-	if (textA && !textB) {
+	if (textA && !textB)
+	{
 		sDocumentCur->type |= DOC_SPACE1;
-	} else if (textA && textB) {
+	}
+	else if (textA && textB)
+	{
 		sDocumentCur->type |= DOC_SPACE2;
-	} else if (!textA && textB) {
+	}
+	else if (!textA && textB)
+	{
 		sDocumentCur->type |= DOC_INFO;
 	}
 }
 
-void document_free() {
-	document_t* doc;
+void document_free()
+{
+	document_t *doc;
 	
 	sDocumentCur = sDocumentHead;
 	
-	while ((doc = sDocumentCur) != NULL) {
+	while ((doc = sDocumentCur) != NULL)
+	{
 		sDocumentCur = doc->next;
 		if (doc->text[0])
 			free(doc->text[0]);
@@ -54,62 +65,70 @@ void document_free() {
 	sDocumentHead = NULL;
 }
 
-void document_mergeDefineHeader(FILE* file) {
-	char* typeTable[] = {
+void document_mergeDefineHeader(FILE *file)
+{
+	char *typeTable[] = {
 		"WOW_",
 		
-		"MTL_",
-		"DL_",
-		"SKEL_",
-		"TEX_",
-		"PAL_",
-		"ANIM_",
-		"PROXY_",
-		"COLL_",
+		"MTL_"
+		, "DL_"
+		, "SKEL_"
+		, "TEX_"
+		, "PAL_"
+		, "ANIM_"
+		, "PROXY_"
+		, "COLL_"
+		,
 	};
-	document_t* doc = sDocumentHead;
+	document_t *doc = sDocumentHead;
 	
-	while (doc) {
+	while (doc)
+	{
 		// Utilize buffer for alignment
 		char buffer[512];
 		
-		if (doc->type & DOC_SPACE1) {
+		if (doc->type & DOC_SPACE1)
+		{
 			sprintf(
-				buffer,
-				"%s%s",
-				typeTable[doc->type & 0xF],
-				Canitize(doc->text[0], 1)
+				buffer
+				, "%s%s"
+				, typeTable[doc->type & 0xF]
+				, Canitize(doc->text[0], 1)
 			);
 			
 			fprintf(
-				file,
-				DOCS_DEF DOCS_SPACE " 0x%08X\n",
-				buffer,
-				doc->offset
+				file
+				, DOCS_DEF DOCS_SPACE " 0x%08X\n"
+				, buffer
+				, doc->offset
 			);
 		}
-		if (doc->type & DOC_SPACE2) {
+		if (doc->type & DOC_SPACE2)
+		{
 			sprintf(
-				buffer,
-				"%s%s_%s",
-				typeTable[doc->type & 0xF],
-				Canitize(doc->text[0], 1),
-				doc->text[1]
+				buffer
+				, "%s%s_%s"
+				, typeTable[doc->type & 0xF]
+				, Canitize(doc->text[0], 1)
+				, doc->text[1]
 			);
 			
-			if (doc->type & DOC_INT) {
+			if (doc->type & DOC_INT)
+			{
 				fprintf(
-					file,
-					DOCS_DEF DOCS_SPACE " %d\n",
-					buffer,
-					doc->offset
+					file
+					, DOCS_DEF DOCS_SPACE " %d\n"
+					, buffer
+					, doc->offset
 				);
-			} else {
+			}
+			else
+			{
 				fprintf(
-					file,
-					DOCS_DEF DOCS_SPACE " 0x%08X\n",
-					buffer,
-					doc->offset
+					file
+					, DOCS_DEF DOCS_SPACE " 0x%08X\n"
+					, buffer
+					, doc->offset
 				);
 			}
 		}
