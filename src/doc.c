@@ -137,7 +137,7 @@ void document_mergeDefineHeader(FILE *file)
 
 static char *document_externify(char *txt)
 {
-	char* buf = calloc(1, strlen(txt) + 8);
+	static char buf[1024 * 8];
 	int i = 0, j = 0;
 	
 	strcpy(buf, txt);
@@ -181,7 +181,7 @@ static char *document_externify(char *txt)
 				}
 			}
 		}
-
+		
 		buf[j] = txt[i];
 		buf[j + 1] = '\0';
 		
@@ -192,7 +192,7 @@ static char *document_externify(char *txt)
 	return buf;
 }
 
-void document_mergeExternHeader(FILE *file)
+void document_mergeExternHeader(FILE *header, FILE *linker, FILE* o)
 {
 	char *typeTable[] = {
 		"\0"
@@ -205,6 +205,17 @@ void document_mergeExternHeader(FILE *file)
 		, /* PROXY */ "\0"
 		, /* COLL  */ "void* gColl"
 	};
+	char *linkTable[] = {
+		"\0"
+		, /* MTL   */ "gMtl"
+		, /* DL    */ "gDL"
+		, /* SKEL  */ "gSkel"
+		, /* TEX   */ "gTex"
+		, /* PAL   */ "\0"
+		, /* ANIM  */ "gAnim"
+		, /* PROXY */ "\0"
+		, /* COLL  */ "gColl"
+	};
 	document_t *doc = sDocumentHead;
 	
 	while (doc)
@@ -214,7 +225,7 @@ void document_mergeExternHeader(FILE *file)
 		
 		if (doc->type & DOC_SPACE1 && (doc->type & 0xF) != T_PAL)
 		{
-			char* txt = document_externify(doc->text[0]);
+			char *txt = document_externify(doc->text[0]);
 			sprintf(
 				buffer
 				, "%s%s"
@@ -222,13 +233,20 @@ void document_mergeExternHeader(FILE *file)
 				, txt
 			);
 			
-			if (txt)
-				free(txt);
-			fprintf(
-				file
-				, DOCS_EXT "%s" ";\n"
-				, buffer
-			);
+			if (header)
+				fprintf(
+					header
+					, DOCS_EXT "%s" ";\n"
+					, buffer
+				);
+			if (linker)
+				fprintf(
+					linker
+					, "%s%s = 0x%08X;\n"
+					, linkTable[doc->type & 0xF]
+					, txt
+					, doc->offset
+				);
 		}
 		
 		doc = doc->next;

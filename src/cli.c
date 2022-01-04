@@ -18,6 +18,8 @@ static inline void showargs(void)
 	fprintf(stderr, " --except  'l,i,s,t'    * groups named in list\n");
 	fprintf(stderr, " --silent               * print only errors\n");
 	fprintf(stderr, " --print-palettes       * output palette addresses\n");
+	fprintf(stderr, " --header               * output header\n");
+	fprintf(stderr, " --linker               * output linker\n");
 }
 
 int wow_main(argc, argv)

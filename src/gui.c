@@ -217,7 +217,7 @@ int wow_main(argc, argv)
 		
 		/* retrieve docs as 0-term'd string */
 		// document_mergeDefineHeader(docs);
-		document_mergeExternHeader(docs);
+		document_mergeExternHeader(NULL, docs, NULL);
 		docs_sz = ftell(docs);
 		if (!(docs_str = malloc(docs_sz + 1)))
 		{
