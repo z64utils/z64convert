@@ -28,6 +28,7 @@ void document_assign(const char *textA, const char *textB, unsigned int offset, 
 void document_free();
 
 void document_mergeDefineHeader(FILE *file);
+void document_mergeExternHeader(FILE* file);
 
 #endif
 

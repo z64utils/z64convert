@@ -68,9 +68,8 @@ void document_free()
 void document_mergeDefineHeader(FILE *file)
 {
 	char *typeTable[] = {
-		"WOW_",
-		
-		"MTL_"
+		"WOW_"
+		, "MTL_"
 		, "DL_"
 		, "SKEL_"
 		, "TEX_"
@@ -78,7 +77,6 @@ void document_mergeDefineHeader(FILE *file)
 		, "ANIM_"
 		, "PROXY_"
 		, "COLL_"
-		,
 	};
 	document_t *doc = sDocumentHead;
 	
@@ -131,6 +129,106 @@ void document_mergeDefineHeader(FILE *file)
 					, doc->offset
 				);
 			}
+		}
+		
+		doc = doc->next;
+	}
+}
+
+static char *document_externify(char *txt)
+{
+	char* buf = calloc(1, strlen(txt) + 8);
+	int i = 0, j = 0;
+	
+	strcpy(buf, txt);
+	
+	i = 0;
+	
+	while (txt[i] != '\0')
+	{
+		
+		if (j == 0)
+		{
+			buf[j++] = toupper(txt[i++]);
+			continue;
+		}
+		
+		if (txt[i] == '.')
+			if (txt[i + 1] == 'p')
+				if (txt[i + 2] == 'n')
+					if (txt[i + 3] == 'g')
+					{
+						i = i + 4;
+					}
+		if (txt[i] == 'Z')
+			if (txt[i + 1] == 'Z')
+				if (txt[i + 2] == 'P')
+					if (txt[i + 3] == 'A')
+					{
+						i = i + 5;
+					}
+		
+		if (txt[i] < 'A' || txt[i] > 'Z')
+		{
+			if (txt[i] < 'a' || txt[i] > 'z')
+			{
+				if (txt[i] < '0' || txt[i] > '9')
+				{
+					i++;
+					txt[i] = toupper(txt[i]);
+					
+					continue;
+				}
+			}
+		}
+
+		buf[j] = txt[i];
+		buf[j + 1] = '\0';
+		
+		i++;
+		j++;
+	}
+	
+	return buf;
+}
+
+void document_mergeExternHeader(FILE *file)
+{
+	char *typeTable[] = {
+		"\0"
+		, /* MTL   */ "Gfx* gMtl"
+		, /* DL    */ "Gfx* gDL"
+		, /* SKEL  */ "void* gSkel"
+		, /* TEX   */ "void* gTex"
+		, /* PAL   */ "\0"
+		, /* ANIM  */ "void* gAnim"
+		, /* PROXY */ "\0"
+		, /* COLL  */ "void* gColl"
+	};
+	document_t *doc = sDocumentHead;
+	
+	while (doc)
+	{
+		// Utilize buffer for alignment
+		char buffer[512];
+		
+		if (doc->type & DOC_SPACE1 && (doc->type & 0xF) != T_PAL)
+		{
+			char* txt = document_externify(doc->text[0]);
+			sprintf(
+				buffer
+				, "%s%s"
+				, typeTable[doc->type & 0xF]
+				, txt
+			);
+			
+			if (txt)
+				free(txt);
+			fprintf(
+				file
+				, DOCS_EXT "%s" ";\n"
+				, buffer
+			);
 		}
 		
 		doc = doc->next;
