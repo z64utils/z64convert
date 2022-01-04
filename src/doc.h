@@ -11,8 +11,9 @@ typedef enum {
 	DOC_SPACE1 = 1 << 4,
 	DOC_SPACE2 = 1 << 5,
 	DOC_INFO   = 1 << 6,
+	DOC_INT    = 1 << 7,
 	
-    T_NONE = 0,
+	T_NONE     = 0,
 	T_MTL,
 	T_DL,
 	T_SKEL,
@@ -29,3 +30,4 @@ void document_free();
 void document_define_header(FILE* file);
 
 #endif
+

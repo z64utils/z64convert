@@ -1165,7 +1165,7 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 				mtl->name,
 				buf,
 				w,
-				T_MTL
+				T_MTL | DOC_INT
 			);
 			
 			sprintf(buf, "TEXEL%d_H", i);
@@ -1178,7 +1178,7 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 				mtl->name,
 				buf,
 				h,
-				T_MTL
+				T_MTL | DOC_INT
 			);
 		}
 	}
@@ -2368,7 +2368,7 @@ void *zobj_writeSkeleton(
 		sk->g->name,
 		"NUMBONES",
 		numBones,
-		T_SKEL
+		T_SKEL | DOC_INT
 	);
 	// fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE_2 " %d\n"
 	// 	, Canitize(sk->g->name, 1)
@@ -2378,8 +2378,8 @@ void *zobj_writeSkeleton(
 	document_doc(
 		sk->g->name,
 		"NUMBONES_DT",
-		numBones,
-		T_SKEL
+		numBones + 1,
+		T_SKEL | DOC_INT
 	);
 	// fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE_2 " (%d+1)\n"
 	// 	, Canitize(sk->g->name, 1)

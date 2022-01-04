@@ -854,7 +854,7 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 	// 	, (int)udata->fileOfs + getBase(tex->objex)
 	// );
 	document_doc(
-		tex->name,
+		pathTail(tex->name),
 		NULL,
 		(int)udata->fileOfs + getBase(tex->objex),
 		T_TEX
@@ -877,6 +877,9 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 		/* write individual textures within texture bank */
 		for (int i = 0; i < udata->virtDiv; ++i)
 		{
+			char buffer[128];
+
+			sprintf(buffer, "%s_%d", pathTail(tex->name), i);
 			// fprintf(docs, DOCS_DEF "TEX_" DOCS_SPACE "  0x%08X\n"
 			// 	, CanitizeNum(pathTail(tex->name), 1, i)
 			// 	, (int)(udata->fileOfs
@@ -884,7 +887,7 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 			// 	+ i * (udata->fileSz / udata->virtDiv))
 			// );
 			document_doc(
-				tex->name,
+				buffer,
 				NULL,
 				(int)(udata->fileOfs
 				+ getBase(tex->objex)

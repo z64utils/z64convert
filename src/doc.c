@@ -70,14 +70,48 @@ void document_define_header(FILE* file) {
 	document_t* doc = sDocumentHead;
 	
 	while (doc) {
+		// Utilize buffer for alignment
+		char buffer[512];
+		
 		if (doc->type & DOC_SPACE1) {
+			sprintf(
+				buffer,
+				"%s%s",
+				typeTable[doc->type & 0xF],
+				Canitize(doc->text[0], 1)
+			);
+			
 			fprintf(
 				file,
-				DOCS_DEF "%s" DOCS_SPACE "  0x%08X\n",
-				typeTable[doc->type & 0xF],
-				Canitize(doc->text[0], 1),
+				DOCS_DEF DOCS_SPACE " 0x%08X\n",
+				buffer,
 				doc->offset
 			);
+		}
+		if (doc->type & DOC_SPACE2) {
+			sprintf(
+				buffer,
+				"%s%s_%s",
+				typeTable[doc->type & 0xF],
+				Canitize(doc->text[0], 1),
+				doc->text[1]
+			);
+			
+			if (doc->type & DOC_INT) {
+				fprintf(
+					file,
+					DOCS_DEF DOCS_SPACE " %d\n",
+					buffer,
+					doc->offset
+				);
+			} else {
+				fprintf(
+					file,
+					DOCS_DEF DOCS_SPACE " 0x%08X\n",
+					buffer,
+					doc->offset
+				);
+			}
 		}
 		
 		doc = doc->next;
