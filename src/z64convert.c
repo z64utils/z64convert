@@ -11,6 +11,7 @@
 #include "put.h"
 #include "collider.h"
 #include "collision.h"
+#include "doc.h"
 
 #define DSTDERR docs
 
@@ -773,11 +774,17 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 		/* attempt to write */
 		if (!collision_write(zobj, g, baseOfs, &headOfs))
 			fail(collision_errmsg());
-		
-		fprintf(docs, DOCS_DEF "COLL_" DOCS_SPACE " 0x%08X\n"
-			, Canitize(g->name + strlen("collision."), 1)
-			, baseOfs + headOfs
-		);		
+
+		document_doc(
+			g->name + strlen("collision."),
+			NULL,
+			baseOfs + headOfs,
+			T_COLL
+		);
+		// fprintf(docs, DOCS_DEF "COLL_" DOCS_SPACE " 0x%08X\n"
+		// 	, Canitize(g->name + strlen("collision."), 1)
+		// 	, baseOfs + headOfs
+		// );		
 //		fprintf(docs, "'%s' : 0x%08X\n", g->name, baseOfs + headOfs);
 	}
 	
@@ -931,6 +938,7 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 		struct zobjProxyArray *p = proxyArrayList[i];
 		/* unnesting no longer necessary? leave it this way for safety */
 		zobjProxyArray_unnest(zobj, p, baseOfs);
+
 		if (!zobjProxyArray_print(docs, zobj, p, baseOfs))
 			fail(zobj_errmsg());
 		zobjProxyArray_free(p);

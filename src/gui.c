@@ -7,6 +7,8 @@
 #include <wow_gui.h>
 #include <wow_clipboard.h>
 
+#include "doc.h"
+
 #include "z64convert.h"
 
 static int gui_errors = 0;
@@ -215,6 +217,7 @@ int wow_main(argc, argv)
 		wowGui_infof("success!");
 		
 		/* retrieve docs as 0-term'd string */
+		document_define_header(docs);
 		docs_sz = ftell(docs);
 		if (!(docs_str = malloc(docs_sz + 1)))
 		{
@@ -231,6 +234,7 @@ int wow_main(argc, argv)
 		
 		/* can safely close docs now */
 		fclose(docs);
+		document_free();
 		
 		/* write output to stdout */
 		fprintf(stdout, "/* documentation */");

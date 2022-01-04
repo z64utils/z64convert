@@ -12,6 +12,7 @@
 #include "put.h"
 #include "texture.h" /* texUdata */
 #include <gfxasm.h>
+#include "doc.h"
 
 #include "ksort.h"
 
@@ -1128,9 +1129,15 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 		mtl->useMtlOfs = vftell(bin);
 		
 		/* print docs */
-		fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE "  0x%08X\n"
-			, Canitize(mtl->name, 1)
-			, (int)vftell(bin) + baseOfs
+		// fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE "  0x%08X\n"
+		// 	, Canitize(mtl->name, 1)
+		// 	, (int)vftell(bin) + baseOfs
+		// );
+		document_doc(
+			mtl->name,
+			NULL,
+			(int)vftell(bin) + baseOfs,
+			T_MTL
 		);
 		
 		/* texture dimensions */
@@ -1149,17 +1156,29 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 			h = tex->h / udata->virtDiv;
 			
 			sprintf(buf, "TEXEL%d_W", i);
-			fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " %d\n"
-				, Canitize(mtl->name, 1)
-				, buf
-				, w
+			// fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " %d\n"
+			// 	, Canitize(mtl->name, 1)
+			// 	, buf
+			// 	, w
+			// );
+			document_doc(
+				mtl->name,
+				buf,
+				w,
+				T_MTL
 			);
 			
 			sprintf(buf, "TEXEL%d_H", i);
-			fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " %d\n"
-				, Canitize(mtl->name, 1)
-				, buf
-				, h
+			// fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " %d\n"
+			// 	, Canitize(mtl->name, 1)
+			// 	, buf
+			// 	, h
+			// );
+			document_doc(
+				mtl->name,
+				buf,
+				h,
+				T_MTL
 			);
 		}
 	}
@@ -1245,11 +1264,18 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 					 */
 					ofs = 0;
 					if (ex)
-						fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " 0x%08X\n"
-							, Canitize(mtl->name, 1)
-							, ex
-							, (int)vftell(bin) + baseOfs + ofs
+						document_doc(
+							mtl->name,
+							ex,
+							(int)vftell(bin) + baseOfs + ofs,
+							T_MTL
 						);
+						// fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " 0x%08X\n"
+						// 	, Canitize(mtl->name, 1)
+						// 	, ex
+						// 	, (int)vftell(bin) + baseOfs + ofs
+						// );
+						
 				}
 				vfput32(bin, r[0]);
 				vfput32(bin, r[1]);
@@ -1851,9 +1877,15 @@ void *zobj_writeDlist(
 			}
 			
 			/* print docs */
-			fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
-				, Canitize(g->name, 1)
-				, (int)vftell(bin) + baseOfs
+			// fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
+			// 	, Canitize(g->name, 1)
+			// 	, (int)vftell(bin) + baseOfs
+			// );
+			document_doc(
+				g->name,
+				NULL,
+				(int)vftell(bin) + baseOfs,
+				T_DL
 			);
 			debugf(" > '%s' address %08X\n", g->name, (int)vftell(bin) + baseOfs);
 			
@@ -1928,9 +1960,15 @@ void *zobj_writeDlist(
 		gUdata->dlistOffset = n;
 		
 		/* proxy docs */
-		fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
-			, CanitizeProxy(g->name, 1)
-			, n + baseOfs
+		// fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
+		// 	, CanitizeProxy(g->name, 1)
+		// 	, n + baseOfs
+		// );
+		document_doc(
+			g->name,
+			NULL,
+			n + baseOfs,
+			T_DL
 		);
 	}
 	
@@ -2162,10 +2200,16 @@ void *zobj_writeSkeleton(
 	
 		/* proxy docs */
 		if (g->attrib && strstr(g->attrib, "NOSKEL") == 0)
-			fprintf(docs, DOCS_DEF "PROXY_" DOCS_SPACE "0x%08X\n"
-				, Canitize(g->name, 1)
-				, (int)vftell(bin) + baseOfs
+			document_doc(
+				g->name,
+				NULL,
+				(int)vftell(bin) + baseOfs,
+				T_PROXY
 			);
+			// fprintf(docs, DOCS_DEF "PROXY_" DOCS_SPACE "0x%08X\n"
+			// 	, Canitize(g->name, 1)
+			// 	, (int)vftell(bin) + baseOfs
+			// );
 		
 		int skproxyindex;
 		void *skproxy(VFILE *fp, struct objex_bone *b, enum x x)
@@ -2199,10 +2243,16 @@ void *zobj_writeSkeleton(
 					gUdata->dlistOffset = n;
 				
 					/* proxy docs */
-					fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
-						, CanitizeProxy(g->name, 1)
-						, n + baseOfs
+					document_doc(
+						g->name,
+						NULL,
+						n + baseOfs,
+						T_DL
 					);
+					// fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
+					// 	, CanitizeProxy(g->name, 1)
+					// 	, n + baseOfs
+					// );
 				}
 				
 				if (x & WRITE_TABLE)
@@ -2304,20 +2354,38 @@ void *zobj_writeSkeleton(
 //		, "#define %s 0x%08X /* %s */\n"
 //		, sk->name, baseOfs + headOfs, sk->name
 //	);
-	fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE " 0x%08X\n"
-		, Canitize(sk->g->name, 1)
-		, (int)baseOfs + headOfs
+	document_doc(
+		sk->g->name,
+		NULL,
+		(int)baseOfs + headOfs,
+		T_SKEL
 	);
-	fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE_2 " %d\n"
-		, Canitize(sk->g->name, 1)
-		, "NUMBONES"
-		, numBones
+	// fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE " 0x%08X\n"
+	// 	, Canitize(sk->g->name, 1)
+	// 	, (int)baseOfs + headOfs
+	// );
+	document_doc(
+		sk->g->name,
+		"NUMBONES",
+		numBones,
+		T_SKEL
 	);
-	fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE_2 " (%d+1)\n"
-		, Canitize(sk->g->name, 1)
-		, "NUMBONES_DT"
-		, numBones
+	// fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE_2 " %d\n"
+	// 	, Canitize(sk->g->name, 1)
+	// 	, "NUMBONES"
+	// 	, numBones
+	// );
+	document_doc(
+		sk->g->name,
+		"NUMBONES_DT",
+		numBones,
+		T_SKEL
 	);
+	// fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE_2 " (%d+1)\n"
+	// 	, Canitize(sk->g->name, 1)
+	// 	, "NUMBONES_DT"
+	// 	, numBones
+	// );
 	
 	/* note header offset for later */
 	gUdata->dlistOffset = headOfs;
@@ -2641,10 +2709,16 @@ void *zobj_writeStdAnim(
 //	debugf("anim %08X : %s\n", (int)vftell(bin), anim->name);
 	if (one_animated_skeleton)
 	{
-		fprintf(docs, DOCS_DEF "ANIM_" DOCS_SPACE " 0x%08X\n"
-			, Canitize(anim->name, 1)
-			, (int)vftell(bin) + baseOfs
+		document_doc(
+			anim->name,
+			NULL,
+			(int)vftell(bin) + baseOfs,
+			T_ANIM
 		);
+		// fprintf(docs, DOCS_DEF "ANIM_" DOCS_SPACE " 0x%08X\n"
+		// 	, Canitize(anim->name, 1)
+		// 	, (int)vftell(bin) + baseOfs
+		// );
 	}
 	
 	/* multiple animated skeletons */
@@ -2652,11 +2726,17 @@ void *zobj_writeStdAnim(
 	{
 		char skelName[1024];
 		strcpy(skelName, Canitize(anim->sk->name, 1));
-		fprintf(docs, DOCS_DEF "ANIM_" DOCS_SPACE_2 " 0x%08X\n"
-			, skelName
-			, Canitize(anim->name, 1)
-			, (int)vftell(bin) + baseOfs
+		document_doc(
+			skelName,
+			anim->name,
+			(int)vftell(bin) + baseOfs,
+			T_ANIM
 		);
+		// fprintf(docs, DOCS_DEF "ANIM_" DOCS_SPACE_2 " 0x%08X\n"
+		// 	, skelName
+		// 	, Canitize(anim->name, 1)
+		// 	, (int)vftell(bin) + baseOfs
+		// );
 	}
 	vfput16(bin, frames);
 	vfput16(bin, 0);

@@ -1,0 +1,31 @@
+#ifndef __Z64DOC_H__
+#define __Z64DOC_H__
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdint.h>
+#include "err.h"
+#include <assert.h>
+
+typedef enum {
+	DOC_SPACE1 = 1 << 4,
+	DOC_SPACE2 = 1 << 5,
+	DOC_INFO   = 1 << 6,
+	
+    T_NONE = 0,
+	T_MTL,
+	T_DL,
+	T_SKEL,
+	T_TEX,
+	T_PAL,
+	T_ANIM,
+	T_PROXY,
+	T_COLL,
+} doctype_t;
+
+void document_doc(const char* textA, const char* textB, unsigned int offset, doctype_t type);
+void document_free();
+
+void document_define_header(FILE* file);
+
+#endif

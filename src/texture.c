@@ -8,6 +8,7 @@
 #include "put.h"
 #include "err.h"
 #include "watermark.h"
+#include "doc.h"
 
 #define TMEM_MAX 4096
 #define acfunc_colors 4 // FIXME TODO needs customization
@@ -848,9 +849,15 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 	/* get texture offset */
 	udata->fileOfs = vftell(bin);
 //	fprintf(docs, "texture '%s' %08X (%08X)\n", tex->name, (int)udata->fileOfs, (int)udata->fileSz);
-	fprintf(docs, DOCS_DEF "TEX_" DOCS_SPACE "  0x%08X\n"
-		, Canitize(pathTail(tex->name), 1)
-		, (int)udata->fileOfs + getBase(tex->objex)
+	// fprintf(docs, DOCS_DEF "TEX_" DOCS_SPACE "  0x%08X\n"
+	// 	, Canitize(pathTail(tex->name), 1)
+	// 	, (int)udata->fileOfs + getBase(tex->objex)
+	// );
+	document_doc(
+		tex->name,
+		NULL,
+		(int)udata->fileOfs + getBase(tex->objex),
+		T_TEX
 	);
 	
 	/* texture bank */
@@ -870,11 +877,19 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 		/* write individual textures within texture bank */
 		for (int i = 0; i < udata->virtDiv; ++i)
 		{
-			fprintf(docs, DOCS_DEF "TEX_" DOCS_SPACE "  0x%08X\n"
-				, CanitizeNum(pathTail(tex->name), 1, i)
-				, (int)(udata->fileOfs
+			// fprintf(docs, DOCS_DEF "TEX_" DOCS_SPACE "  0x%08X\n"
+			// 	, CanitizeNum(pathTail(tex->name), 1, i)
+			// 	, (int)(udata->fileOfs
+			// 	+ getBase(tex->objex)
+			// 	+ i * (udata->fileSz / udata->virtDiv))
+			// );
+			document_doc(
+				tex->name,
+				NULL,
+				(int)(udata->fileOfs
 				+ getBase(tex->objex)
-				+ i * (udata->fileSz / udata->virtDiv))
+				+ i * (udata->fileSz / udata->virtDiv)),
+				T_TEX
 			);
 		}
 	}
@@ -925,10 +940,16 @@ void *texture_writePalette(VFILE *bin, struct objex_palette *pal)
 	color8 = pal->colors;
 	//fprintf(docs, "palette %08X (sz %d)\n", (int)pal->fileOfs, pal->colorsSize);
 	if (printPalettes)
-		fprintf(docs, DOCS_DEF "PAL_" DOCS_SPACE "  0x%08X\n"
-			, int2str(pal->index)
-			, (int)pal->fileOfs + getBase(pal->objex)
+		document_doc(
+			int2str(pal->index),
+			NULL,
+			(int)pal->fileOfs + getBase(pal->objex),
+			T_PAL
 		);
+		// fprintf(docs, DOCS_DEF "PAL_" DOCS_SPACE "  0x%08X\n"
+		// 	, int2str(pal->index)
+		// 	, (int)pal->fileOfs + getBase(pal->objex)
+		// );
 	vfwrite(color8, 1, pal->colorsSize, bin);
 //	for (int i = 0; i < pal->colorsSize; ++i)
 //		vfput8(bin, color8[i]);
