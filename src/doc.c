@@ -200,6 +200,8 @@ static const char *document_externify(const char *txt)
 		
 		/* copy into buffer */
 		buf[i] = *txt;
+		if (i && !isalnum(txt[-1]))
+			buf[i] = toupper(buf[i]);
 		if (!i) /* first letter is always capitalized */
 			buf[i] = toupper(buf[i]);
 		++i;
@@ -214,14 +216,14 @@ void document_mergeExternHeader(FILE *header, FILE *linker, FILE *o)
 {
 	char *typeTable[] = {
 		"\0"
-		, /* MTL   */ "Gfx*"
-		, /* DL    */ "Gfx*"
-		, /* SKEL  */ "void*"
-		, /* TEX   */ "void*"
+		, /* MTL   */ "Gfx"
+		, /* DL    */ "Gfx"
+		, /* SKEL  */ "FlexSkeletonHeader"
+		, /* TEX   */ "u16"
 		, /* PAL   */ "\0"
-		, /* ANIM  */ "void*"
+		, /* ANIM  */ "AnimationHeader"
 		, /* PROXY */ "\0"
-		, /* COLL  */ "void*"
+		, /* COLL  */ "CollisionHeader"
 	};
 	char *linkTable[] = {
 		"\0"
@@ -270,6 +272,36 @@ void document_mergeExternHeader(FILE *header, FILE *linker, FILE *o)
 					, txt
 					, doc->offset
 				);
+		}
+		else if (doc->type & DOC_SPACE2)
+		{
+			if (doc->type & DOC_INT)
+			{
+				char *typeTable[] = {
+					"WOW_"
+					, "MTL_"
+					, "DL_"
+					, "SKEL_"
+					, "TEX_"
+					, "PAL_"
+					, "ANIM_"
+					, "PROXY_"
+					, "COLL_"
+				};
+				sprintf(
+					buffer
+					, "%s%s_%s"
+					, typeTable[doc->type & 0xF]
+					, Canitize(doc->text[0], 1)
+					, doc->text[1]
+				);
+				fprintf(
+					header
+					, DOCS_DEF DOCS_SPACE " %d\n"
+					, buffer
+					, doc->offset
+				);
+			}
 		}
 		
 		doc = doc->next;
