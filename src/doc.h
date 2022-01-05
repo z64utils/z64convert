@@ -24,6 +24,7 @@ typedef enum {
 	, T_JOINTCOUNT
 } doctype_t;
 
+void document_setFileName(const char* file);
 void document_assign(const char *textA, const char *textB, unsigned int offset, doctype_t type);
 void document_free();
 

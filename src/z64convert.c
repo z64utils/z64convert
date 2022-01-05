@@ -253,7 +253,10 @@ const char *z64convert(
 	for (int i = 1; i < argc; ++i)
 	{
 		if (streq(argv[i], "--in"))
+		{
 			in = argv[++i];
+			document_setFileName(argv[i]);
+		}
 		else if (streq(argv[i], "--out"))
 			out = argv[++i];
 		else if (streq(argv[i], "--scale"))

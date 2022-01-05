@@ -10,6 +10,12 @@ typedef struct document_t {
 
 static document_t *sDocumentHead;
 static document_t *sDocumentCur;
+static const char *sFileName;
+
+void document_setFileName(const char *file)
+{
+	sFileName = file;
+}
 
 void document_assign(const char *textA, const char *textB, unsigned int offset, doctype_t type)
 {
@@ -64,6 +70,35 @@ void document_free(void)
 	}
 	
 	sDocumentHead = NULL;
+}
+
+static const char *document_basename()
+{
+	static char buffer [1024 * 8];
+	int point = 0;
+	int slash = 0;
+	int strSize = strlen(sFileName);
+	
+	for (int i = strSize; i > 0; i--)
+	{
+		if (point == 0 && sFileName[i] == '.')
+		{
+			point = i;
+		}
+		if (sFileName[i] == '/' || sFileName[i] == '\\')
+		{
+			slash = i;
+			break;
+		}
+	}
+	
+	if (slash == 0)
+		slash = -1;
+	
+	memset(buffer, 0, point - slash);
+	memcpy(buffer, &sFileName[slash + 1], point - slash - 1);
+	
+	return buffer;
 }
 
 void document_mergeDefineHeader(FILE *file)
@@ -143,20 +178,23 @@ static const char *document_externify(const char *txt)
 	
 	while (*txt)
 	{
+		if (*txt == '.')
+		{
+			/* omit any file extensiosn that may be present */
+			if (streq32(txt, ".png")
+			   || streq32(txt, ".tga")
+			   || streq32(txt, ".bmp")
+			   || streq32(txt, ".gif")
+			)
+			{
+				txt += 4;
+				continue;
+			}
+		}
+		
 		if (!isalnum(*txt))
 		{
 			++txt;
-			continue;
-		}
-		
-		/* omit any file extensiosn that may be present */
-		if (streq32(txt, ".png")
-			|| streq32(txt, ".tga")
-			|| streq32(txt, ".bmp")
-			|| streq32(txt, ".gif")
-		)
-		{
-			txt += 4;
 			continue;
 		}
 		
@@ -172,31 +210,32 @@ static const char *document_externify(const char *txt)
 	return buf;
 }
 
-void document_mergeExternHeader(FILE *header, FILE *linker, FILE* o)
+void document_mergeExternHeader(FILE *header, FILE *linker, FILE *o)
 {
 	char *typeTable[] = {
 		"\0"
-		, /* MTL   */ "Gfx* gMtl"
-		, /* DL    */ "Gfx* gDL"
-		, /* SKEL  */ "void* gSkel"
-		, /* TEX   */ "void* gTex"
+		, /* MTL   */ "Gfx*"
+		, /* DL    */ "Gfx*"
+		, /* SKEL  */ "void*"
+		, /* TEX   */ "void*"
 		, /* PAL   */ "\0"
-		, /* ANIM  */ "void* gAnim"
+		, /* ANIM  */ "void*"
 		, /* PROXY */ "\0"
-		, /* COLL  */ "void* gColl"
+		, /* COLL  */ "void*"
 	};
 	char *linkTable[] = {
 		"\0"
-		, /* MTL   */ "gMtl"
-		, /* DL    */ "gDL"
-		, /* SKEL  */ "gSkel"
-		, /* TEX   */ "gTex"
+		, /* MTL   */ "Mtl"
+		, /* DL    */ "DL"
+		, /* SKEL  */ "Skel"
+		, /* TEX   */ "Tex"
 		, /* PAL   */ "\0"
-		, /* ANIM  */ "gAnim"
+		, /* ANIM  */ "Anim"
 		, /* PROXY */ "\0"
-		, /* COLL  */ "gColl"
+		, /* COLL  */ "Coll"
 	};
 	document_t *doc = sDocumentHead;
+	char *basename = document_basename();
 	
 	while (doc)
 	{
@@ -209,8 +248,10 @@ void document_mergeExternHeader(FILE *header, FILE *linker, FILE* o)
 			snprintf(
 				buffer
 				, sizeof(buffer) / sizeof(*buffer)
-				, "%s%s"
+				, "%s g%s_%s%s"
 				, typeTable[doc->type & 0xF]
+				, basename
+				, linkTable[doc->type & 0xF]
 				, txt
 			);
 			
@@ -223,7 +264,8 @@ void document_mergeExternHeader(FILE *header, FILE *linker, FILE* o)
 			if (linker)
 				fprintf(
 					linker
-					, "%s%s = 0x%08X;\n"
+					, "g%s_%s%s = 0x%08X;\n"
+					, basename
 					, linkTable[doc->type & 0xF]
 					, txt
 					, doc->offset
