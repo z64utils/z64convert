@@ -1,4 +1,5 @@
 #include "doc.h"
+#include "streq.h"
 
 typedef struct document_t {
 	char *text[2];
@@ -7,8 +8,8 @@ typedef struct document_t {
 	struct document_t *next;
 } document_t;
 
-document_t *sDocumentHead;
-document_t *sDocumentCur;
+static document_t *sDocumentHead;
+static document_t *sDocumentCur;
 
 void document_assign(const char *textA, const char *textB, unsigned int offset, doctype_t type)
 {
@@ -46,7 +47,7 @@ void document_assign(const char *textA, const char *textB, unsigned int offset, 
 	}
 }
 
-void document_free()
+void document_free(void)
 {
 	document_t *doc;
 	
@@ -135,60 +136,39 @@ void document_mergeDefineHeader(FILE *file)
 	}
 }
 
-static char *document_externify(char *txt)
+static const char *document_externify(const char *txt)
 {
 	static char buf[1024 * 8];
-	int i = 0, j = 0;
+	int i = 0;
 	
-	strcpy(buf, txt);
-	
-	i = 0;
-	
-	while (txt[i] != '\0')
+	while (*txt)
 	{
-		
-		if (j == 0)
+		if (!isalnum(*txt))
 		{
-			buf[j++] = toupper(txt[i++]);
+			++txt;
 			continue;
 		}
 		
-		if (txt[i] == '.')
-			if (txt[i + 1] == 'p')
-				if (txt[i + 2] == 'n')
-					if (txt[i + 3] == 'g')
-					{
-						i = i + 4;
-					}
-		if (txt[i] == 'Z')
-			if (txt[i + 1] == 'Z')
-				if (txt[i + 2] == 'P')
-					if (txt[i + 3] == 'A')
-					{
-						i = i + 5;
-					}
-		
-		if (txt[i] < 'A' || txt[i] > 'Z')
+		/* omit any file extensiosn that may be present */
+		if (streq32(txt, ".png")
+			|| streq32(txt, ".tga")
+			|| streq32(txt, ".bmp")
+			|| streq32(txt, ".gif")
+		)
 		{
-			if (txt[i] < 'a' || txt[i] > 'z')
-			{
-				if (txt[i] < '0' || txt[i] > '9')
-				{
-					i++;
-					txt[i] = toupper(txt[i]);
-					
-					continue;
-				}
-			}
+			txt += 4;
+			continue;
 		}
 		
-		buf[j] = txt[i];
-		buf[j + 1] = '\0';
-		
-		i++;
-		j++;
+		/* copy into buffer */
+		buf[i] = *txt;
+		if (!i) /* first letter is always capitalized */
+			buf[i] = toupper(buf[i]);
+		++i;
+		++txt;
 	}
 	
+	buf[i] = '\0';
 	return buf;
 }
 
@@ -225,9 +205,10 @@ void document_mergeExternHeader(FILE *header, FILE *linker, FILE* o)
 		
 		if (doc->type & DOC_SPACE1 && (doc->type & 0xF) != T_PAL)
 		{
-			char *txt = document_externify(doc->text[0]);
-			sprintf(
+			const char *txt = document_externify(doc->text[0]);
+			snprintf(
 				buffer
+				, sizeof(buffer) / sizeof(*buffer)
 				, "%s%s"
 				, typeTable[doc->type & 0xF]
 				, txt
