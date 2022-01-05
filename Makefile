@@ -54,31 +54,31 @@ lingui: $(BuildGuiLinO) z64convert-gui
 
 bin/gui/linux/%.o: %.c
 	@echo [$<]
-	@$(WinGcc) -c -o $@ $< $(FLAGS) \
+	@$(gcc) -c -o $@ $< $(FLAGS) \
  	-DZ64CONVERT_GUI \
  	-Wno-switch -Wno-format -Wno-unused-but-set-variable
 
 z64convert-gui: $(BuildGuiLinO)
 	@echo [$@]
-	@$(WinGcc) -o $@ $^ $(FLAGS) $(MFLAGS) \
+	@$(gcc) -o $@ $^ $(FLAGS) $(MFLAGS) \
  	-DZ64CONVERT_GUI \
  	-Wno-switch -Wno-format -Wno-unused-but-set-variable \
 	-no-pie -lX11 -lm -lpthread
 
 #
-# Linux GUI
+# Linux CLI
 #
 
 lincli: $(BuildCliLinO) z64convert-cli
 
 bin/cli/linux/%.o: %.c
 	@echo [$<]
-	@$(WinGcc) -c -o $@ $< $(FLAGS) \
+	@gcc -c -o $@ $< $(FLAGS) \
  	-Wno-switch -Wno-format -Wno-unused-but-set-variable
 
 z64convert-cli: $(BuildCliLinO)
 	@echo [$@]
-	@$(WinGcc) -o $@ $^ $(FLAGS) $(MFLAGS) \
+	@gcc -o $@ $^ $(FLAGS) $(MFLAGS) \
  	-Wno-switch -Wno-format -Wno-unused-but-set-variable
 
 #
