@@ -239,6 +239,14 @@ void document_mergeExternHeader(FILE *header, FILE *linker, FILE *o)
 	document_t *doc = sDocumentHead;
 	char *basename = document_basename();
 	
+	fprintf(
+		header
+		, "#ifndef __%s_H__\n"
+		"#define __%s_H__\n\n"
+		, Canitize(basename, 1)
+		, Canitize(basename, 1)
+	);
+	
 	while (doc)
 	{
 		// Utilize buffer for alignment
@@ -275,7 +283,7 @@ void document_mergeExternHeader(FILE *header, FILE *linker, FILE *o)
 		}
 		else if (doc->type & DOC_SPACE2)
 		{
-			if (doc->type & DOC_INT)
+			if (doc->type & DOC_INT && (doc->type &0xF) == T_SKEL)
 			{
 				char *typeTable[] = {
 					"WOW_"
@@ -306,4 +314,10 @@ void document_mergeExternHeader(FILE *header, FILE *linker, FILE *o)
 		
 		doc = doc->next;
 	}
+
+	fprintf(
+		header
+		, "\n#endif /* __%s_H__ */\n"
+		, Canitize(basename, 1)
+	);
 }
