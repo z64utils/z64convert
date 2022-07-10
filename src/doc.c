@@ -253,7 +253,7 @@ void document_mergeExternHeader(FILE *header, FILE *linker, FILE *o)
 	char *linkTable[] = {
 		"\0"
 		, /* MTL   */ "Mtl"
-		, /* DL    */ "DL"
+		, /* DL    */ "Dl"
 		, /* SKEL  */ "Skel"
 		, /* TEX   */ "Tex"
 		, /* PAL   */ "\0"
