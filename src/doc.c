@@ -212,6 +212,31 @@ static const char *document_externify(const char *txt)
 	return buf;
 }
 
+static char* UnCanitize(const char* txt) {
+	static char buf[512];
+	int w = 0;
+
+	memset(buf, 0, 512);
+
+	while (!isalpha(*txt)) txt++;
+
+	for (int i = 0; i < strlen(txt); i++) {
+		if (ispunct(txt[i]))
+			continue;
+
+		if (i == 0) {
+			buf[w++] = toupper(txt[i]);
+		} else {
+			if (txt[i - 1] == '_')
+				buf[w++] = toupper(txt[i]);
+			else
+				buf[w++] = txt[i];
+		}
+	}
+
+	return buf;
+}
+
 void document_mergeExternHeader(FILE *header, FILE *linker, FILE *o)
 {
 	char *typeTable[] = {
@@ -260,7 +285,7 @@ void document_mergeExternHeader(FILE *header, FILE *linker, FILE *o)
 				, sizeof(buffer) / sizeof(*buffer)
 				, "%s g%s_%s%s"
 				, typeTable[doc->type & 0xF]
-				, basename
+				, UnCanitize(basename)
 				, linkTable[doc->type & 0xF]
 				, txt
 			);
@@ -275,7 +300,7 @@ void document_mergeExternHeader(FILE *header, FILE *linker, FILE *o)
 				fprintf(
 					linker
 					, "g%s_%s%s = 0x%08X;\n"
-					, basename
+					, UnCanitize(basename)
 					, linkTable[doc->type & 0xF]
 					, txt
 					, doc->offset
