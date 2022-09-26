@@ -2360,32 +2360,20 @@ void *zobj_writeSkeleton(
 		(int)baseOfs + headOfs,
 		T_SKEL
 	);
-	// fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE " 0x%08X\n"
-	// 	, Canitize(sk->g->name, 1)
-	// 	, (int)baseOfs + headOfs
-	// );
-	document_assign(
-		sk->g->name,
-		"NUMBONES",
-		numBones,
-		T_SKEL | DOC_INT
-	);
-	// fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE_2 " %d\n"
-	// 	, Canitize(sk->g->name, 1)
-	// 	, "NUMBONES"
-	// 	, numBones
-	// );
-	document_assign(
-		sk->g->name,
-		"NUMBONES_DT",
-		numBones + 1,
-		T_SKEL | DOC_INT
-	);
-	// fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE_2 " (%d+1)\n"
-	// 	, Canitize(sk->g->name, 1)
-	// 	, "NUMBONES_DT"
-	// 	, numBones
-	// );
+    
+    void document_skelanime(struct objex_skeleton* sk, struct objex_bone* bone) {
+        document_assign(sk->g->name, bone->name, 0, DOC_ENUM | DOC_INT);
+        if (bone->child)
+            document_skelanime(sk, bone->child);
+        if (bone->next)
+            document_skelanime(sk, bone->next);
+    }
+
+    document_assign(sk->g->name, "", 0, DOC_ENUM | T_ENUM);
+    document_assign(sk->g->name, "Root.Translate", 0, DOC_ENUM | DOC_INT);
+    document_skelanime(sk, sk->bone);
+    document_assign(sk->g->name, "MAX", numBones + 1, DOC_ENUM | DOC_INT);
+    document_assign(sk->g->name, "", 1, DOC_ENUM | T_ENUM);
 	
 	/* note header offset for later */
 	gUdata->dlistOffset = headOfs;
@@ -2466,6 +2454,20 @@ void *zobj_writePbody(
 		/* write identity matrices */
 	//	localMatrix(bin, sk, mtxaddr, limb);
 	}
+    
+    void document_skelanime(struct objex_skeleton* sk, struct objex_bone* bone) {
+        document_assign(sk->g->name, bone->name, 0, DOC_ENUM | DOC_INT);
+        if (bone->child)
+            document_skelanime(sk, bone->child);
+        if (bone->next)
+            document_skelanime(sk, bone->next);
+    }
+
+    document_assign(sk->g->name, "", 0, DOC_ENUM | T_ENUM);
+    document_assign(sk->g->name, "Root.Translate", 0, DOC_ENUM | DOC_INT);
+    document_skelanime(sk, sk->bone);
+    document_assign(sk->g->name, "MAX", 0, DOC_ENUM | DOC_INT);
+    document_assign(sk->g->name, "", 1, DOC_ENUM | T_ENUM);
 	
 	return success;
 #if 0
