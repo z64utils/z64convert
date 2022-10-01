@@ -310,13 +310,13 @@ void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o) {
                 if (doc->offset == 0)
                     fprintf(header, "\ntypedef enum {\n");
                 else
-                    fprintf(header, "} Skel%sBones;\n\n", doc->text[0]);
+                    fprintf(header, "} Skel%sLimbs;\n\n", doc->text[0]);
                 
             } else {
                 char* skelname;
                 
                 skelname = strdup(Canitize(doc->text[0], 1));
-                fprintf(header, "    %s_BONE_%s,\n", skelname, Canitize(doc->text[1], 1));
+                fprintf(header, "    %s_LIMB_%s,\n", skelname, Canitize(doc->text[1], 1));
                 
                 free(skelname);
             }
