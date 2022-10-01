@@ -266,7 +266,7 @@ void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o) {
             if (header)
                 fprintf(
                     header,
-                    DOCS_EXT "%s" ";\n",
+                    DOCS_EXT "%s[]" ";\n",
                     buffer
                 );
             if (linker)
