@@ -117,7 +117,7 @@ bin/cli/win32/%.o: %.c
  	-Wno-switch -Wno-format -Wno-unused-but-set-variable
 
 z64convert-cli.exe: $(BuildCliWinO)
-	@echo [z64convert-gui.exe]
+	@echo [z64convert-cli.exe]
 	@$(WinGcc) -o $@ $^ $(FLAGS) $(MFLAGS) \
  	-municode -mconsole \
  	-Wno-switch -Wno-format -Wno-unused-but-set-variable

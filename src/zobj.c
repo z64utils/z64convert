@@ -2455,19 +2455,21 @@ void *zobj_writePbody(
 	//	localMatrix(bin, sk, mtxaddr, limb);
 	}
     
-    void document_skelanime(struct objex_skeleton* sk, struct objex_bone* bone) {
-        document_assign(sk->g->name, bone->name, 0, DOC_ENUM | DOC_INT);
-        if (bone->child)
-            document_skelanime(sk, bone->child);
-        if (bone->next)
-            document_skelanime(sk, bone->next);
+    if (strstr(sk->extra, "z64dummy")) {
+        void document_skelanime(struct objex_skeleton* sk, struct objex_bone* bone) {
+            document_assign(sk->g->name, bone->name, 0, DOC_ENUM | DOC_INT);
+            if (bone->child)
+                document_skelanime(sk, bone->child);
+            if (bone->next)
+                document_skelanime(sk, bone->next);
+        }
+        
+        document_assign(sk->g->name, "", 0, DOC_ENUM | T_ENUM);
+        document_assign(sk->g->name, "Root.Translate", 0, DOC_ENUM | DOC_INT);
+        document_skelanime(sk, sk->bone);
+        document_assign(sk->g->name, "MAX", 0, DOC_ENUM | DOC_INT);
+        document_assign(sk->g->name, "", 1, DOC_ENUM | T_ENUM);
     }
-
-    document_assign(sk->g->name, "", 0, DOC_ENUM | T_ENUM);
-    document_assign(sk->g->name, "Root.Translate", 0, DOC_ENUM | DOC_INT);
-    document_skelanime(sk, sk->bone);
-    document_assign(sk->g->name, "MAX", 0, DOC_ENUM | DOC_INT);
-    document_assign(sk->g->name, "", 1, DOC_ENUM | T_ENUM);
 	
 	return success;
 #if 0
