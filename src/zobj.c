@@ -440,6 +440,7 @@ compbuf_new(
 {
 	float w = 1;
 	float h = 1;
+    uint8_t alpha = 0xFF;
 	if (tex)
 	{
 		w = tex->w;
@@ -470,6 +471,12 @@ compbuf_new(
 		{
 			case OBJEX_VTXSHADE_NORMAL:
 				if (vc)
+					vc = 0;
+				break;
+                
+            case OBJEX_VTXSHADE_ALPHA:
+				if (vc)
+                    alpha = (vc->r + vc->g + vc->b) / 3.0f,
 					vc = 0;
 				break;
 			
@@ -503,7 +510,7 @@ compbuf_new(
 	else if (vn)
 	{
 		/* normal */
-		result.rgba = 0xFF;
+		result.rgba = alpha;
 		unsigned char x = vn->x * 127.0;
 		unsigned char y = vn->y * 127.0;
 		unsigned char z = vn->z * 127.0;

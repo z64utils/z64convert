@@ -238,7 +238,7 @@ static struct objex_texture *texture_swap(
 	struct objex_texture *ptr1
 	, struct objex_texture *ptr2
 )
-{ 
+{
 	struct objex_texture *tmp = ptr2->next;
 	ptr2->next = ptr1;
 	ptr1->next = tmp;
@@ -298,7 +298,7 @@ static struct objex_g *group_swap(
 	struct objex_g *ptr1
 	, struct objex_g *ptr2
 )
-{ 
+{
 	struct objex_g *tmp = ptr2->next;
 	ptr2->next = ptr1;
 	ptr1->next = tmp;
@@ -352,7 +352,7 @@ static struct objex_material *material_swap(
 	struct objex_material *ptr1
 	, struct objex_material *ptr2
 )
-{ 
+{
 	struct objex_material *tmp = ptr2->next;
 	ptr2->next = ptr1;
 	ptr1->next = tmp;
@@ -810,7 +810,7 @@ static void *skellib(
 					, sk->name
 				);
 
-// XXX unnecessary			
+// XXX unnecessary
 //			/* previous skeleton is empty */
 //			if (sk && !bone)
 //				return errmsg("skeleton '%s' contains no bones", sk->name);
@@ -1728,6 +1728,8 @@ if (tex && !tex->filename) \
 				mtl->vertexshading = OBJEX_VTXSHADE_NORMAL;
 			else if (streq32(name, "color"))
 				mtl->vertexshading = OBJEX_VTXSHADE_COLOR;
+			else if (streq32(name, "alpha"))
+				mtl->vertexshading = OBJEX_VTXSHADE_ALPHA;
 			else if (streq32(name, "dynamic"))
 				mtl->vertexshading = OBJEX_VTXSHADE_DYNAMIC;
 			else if (streq32(name, "none"))
