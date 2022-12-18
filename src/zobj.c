@@ -87,91 +87,91 @@ void zobjProxyArray_free(struct zobjProxyArray *p)
 
 /* matrix.c */
 void guRTSF(float r, float p, float h, float x, float y, float z, float sx, float sy, float sz, float mf[4][4]) {
-    float dtor = 3.1415926f / 180.0f; //Degrees to Radians
-    float sinr, sinp, sinh, cosr, cosp, cosh; //Sine Roll, Sine Pitch, Sine Heading, Cosine Roll, Cosine Pitch, Cosine Heading
+	float dtor = 3.1415926f / 180.0f; //Degrees to Radians
+	float sinr, sinp, sinh, cosr, cosp, cosh; //Sine Roll, Sine Pitch, Sine Heading, Cosine Roll, Cosine Pitch, Cosine Heading
 
-    //Math
-    r *= dtor; //r (degrees) to radians
-    p *= dtor; //p (degrees) to radians
-    h *= dtor; //h (degrees) to radians
-    sinr = sin(r);//Sine Roll
-    cosr = cos(r);//Cosine Roll
-    sinp = sin(p);//Sine Pitch
-    cosp = cos(p);//Cosine Pitch
-    sinh = sin(h);//Sine Heading
-    cosh = cos(h);//Cosine Heading
+	//Math
+	r *= dtor; //r (degrees) to radians
+	p *= dtor; //p (degrees) to radians
+	h *= dtor; //h (degrees) to radians
+	sinr = sin(r);//Sine Roll
+	cosr = cos(r);//Cosine Roll
+	sinp = sin(p);//Sine Pitch
+	cosp = cos(p);//Cosine Pitch
+	sinh = sin(h);//Sine Heading
+	cosh = cos(h);//Cosine Heading
 
-    //Floating-Point Matrix
-    mf[0][0] = ((cosp * cosh) * 1.0f) * sx;
-    mf[0][1] = (cosp * sinh) * 1.0f;
-    mf[0][2] = (-sinp) * 1.0f;
-    mf[0][3] = 0.0f;
+	//Floating-Point Matrix
+	mf[0][0] = ((cosp * cosh) * 1.0f) * sx;
+	mf[0][1] = (cosp * sinh) * 1.0f;
+	mf[0][2] = (-sinp) * 1.0f;
+	mf[0][3] = 0.0f;
 
-    mf[1][0] = (sinr * sinp * cosh - cosr * sinh) * 1.0f;
-    mf[1][1] = ((sinr * sinp * sinh + cosr * cosh) * 1.0f) * sy;
-    mf[1][2] = (sinr * cosp) * 1.0f;
-    mf[1][3] = 0.0f;
+	mf[1][0] = (sinr * sinp * cosh - cosr * sinh) * 1.0f;
+	mf[1][1] = ((sinr * sinp * sinh + cosr * cosh) * 1.0f) * sy;
+	mf[1][2] = (sinr * cosp) * 1.0f;
+	mf[1][3] = 0.0f;
 
-    mf[2][0] = (cosr * sinp * cosh + sinr * sinh) * 1.0f;
-    mf[2][1] = (cosr * sinp * sinh - sinr * cosh) * 1.0f;
-    mf[2][2] = ((cosr * cosp) * 1.0f) * sz;
-    mf[2][3] = 0.0f;
+	mf[2][0] = (cosr * sinp * cosh + sinr * sinh) * 1.0f;
+	mf[2][1] = (cosr * sinp * sinh - sinr * cosh) * 1.0f;
+	mf[2][2] = ((cosr * cosp) * 1.0f) * sz;
+	mf[2][3] = 0.0f;
 
-    mf[3][0] = x;
-    mf[3][1] = y;
-    mf[3][2] = z;
-    mf[3][3] = 1.0f;
+	mf[3][0] = x;
+	mf[3][1] = y;
+	mf[3][2] = z;
+	mf[3][3] = 1.0f;
 
-    //return mf;
-    
-    /*int a;
-    for(a=0;a<4;a++) {
-    	int b;
-    	for(b=0;b<4;b++) {
-    		printf("mf[%d][%d] = %f\n",a,b,mf[a][b]);
-    	}
-    }*/
+	//return mf;
+	
+	/*int a;
+	for(a=0;a<4;a++) {
+		int b;
+		for(b=0;b<4;b++) {
+			printf("mf[%d][%d] = %f\n",a,b,mf[a][b]);
+		}
+	}*/
 }
 
 /*static long FTOFIX32(float x) {
-    unsigned output = (long)((x) * (float)0x00010000);
-    return output;
+	unsigned output = (long)((x) * (float)0x00010000);
+	return output;
 }*/
 
 #define FTOFIX32(X) (long)((X)*(float)0x00010000)
 
 void *guMtxF2L(float mf[4][4]) {
-    static unsigned char block[0x40];
-    long e1 = 0, e2 = 0;
-    long ai = 0, af = 0;
-    unsigned char *rval=block;
-    int i, j;
+	static unsigned char block[0x40];
+	long e1 = 0, e2 = 0;
+	long ai = 0, af = 0;
+	unsigned char *rval=block;
+	int i, j;
 
-    for ( i = 0; i < 4; i++)
-    {
-        for ( j = 0; j < 2; j++)
-        {
-            e1 = FTOFIX32(mf[i][j * 2]);
-            e2 = FTOFIX32(mf[i][(j * 2) + 1]);
-            ai = (e1 & 0xFFFF0000) | ((e2 >> 16) & 0xFFFF);
-            //Console.Write("{0:X8} ", ai);
-            put32(rval,ai); rval+=4;
-        }
-        //Console.Write("\n");
-    }
-    for ( i = 0; i < 4; i++)
-    {
-        for ( j = 0; j < 2; j++)
-        {
-            e1 = FTOFIX32(mf[i][j * 2]);
-            e2 = FTOFIX32(mf[i][(j * 2) + 1]);
-            af = ((e1 << 16) & 0xFFFF0000) | (e2 & 0xFFFF);
-            //Console.Write("{0:X8} ", af);
-            put32(rval,af); rval+=4;
-        }
-        //Console.Write("\n");
-    }
-    return block;
+	for ( i = 0; i < 4; i++)
+	{
+		for ( j = 0; j < 2; j++)
+		{
+			e1 = FTOFIX32(mf[i][j * 2]);
+			e2 = FTOFIX32(mf[i][(j * 2) + 1]);
+			ai = (e1 & 0xFFFF0000) | ((e2 >> 16) & 0xFFFF);
+			//Console.Write("{0:X8} ", ai);
+			put32(rval,ai); rval+=4;
+		}
+		//Console.Write("\n");
+	}
+	for ( i = 0; i < 4; i++)
+	{
+		for ( j = 0; j < 2; j++)
+		{
+			e1 = FTOFIX32(mf[i][j * 2]);
+			e2 = FTOFIX32(mf[i][(j * 2) + 1]);
+			af = ((e1 << 16) & 0xFFFF0000) | (e2 & 0xFFFF);
+			//Console.Write("{0:X8} ", af);
+			put32(rval,af); rval+=4;
+		}
+		//Console.Write("\n");
+	}
+	return block;
 }
 /* end matrix.c */
 
@@ -440,7 +440,7 @@ compbuf_new(
 {
 	float w = 1;
 	float h = 1;
-    uint8_t alpha = 0xFF;
+	uint8_t alpha = 0xFF;
 	if (tex)
 	{
 		w = tex->w;
@@ -473,12 +473,12 @@ compbuf_new(
 				if (vc)
 					vc = 0;
 				break;
-                
-            case OBJEX_VTXSHADE_ALPHA:
+				
+			case OBJEX_VTXSHADE_ALPHA:
 				if (vc) {
-                    alpha = (vc->r + vc->g + vc->b) / 3.0f;
+					alpha = (vc->r + vc->g + vc->b) / 3.0f;
 					vc = 0;
-                }
+				}
 				break;
 			
 			case OBJEX_VTXSHADE_COLOR:
@@ -1454,8 +1454,8 @@ void *zobj_writeDlist(
 		if (g->bone
 			&& g->bone->skeleton->isPbody
 			&& g->hasSplit /* hasSplit is necessary; if (!hasSplit),
-			                * handle as any other mesh assigned to
-			                * a single bone would be */
+							* handle as any other mesh assigned to
+							* a single bone would be */
 		)
 			isPbody = 1;
 		
@@ -2368,20 +2368,20 @@ void *zobj_writeSkeleton(
 		(int)baseOfs + headOfs,
 		T_SKEL
 	);
-    
-    void document_skelanime(struct objex_skeleton* sk, struct objex_bone* bone) {
-        document_assign(sk->g->name, bone->name, 0, DOC_ENUM | DOC_INT);
-        if (bone->child)
-            document_skelanime(sk, bone->child);
-        if (bone->next)
-            document_skelanime(sk, bone->next);
-    }
+	
+	void document_skelanime(struct objex_skeleton* sk, struct objex_bone* bone) {
+		document_assign(sk->g->name, bone->name, 0, DOC_ENUM | DOC_INT);
+		if (bone->child)
+			document_skelanime(sk, bone->child);
+		if (bone->next)
+			document_skelanime(sk, bone->next);
+	}
 
-    document_assign(sk->g->name, "", 0, DOC_ENUM | T_ENUM);
-    document_assign(sk->g->name, "Root.Translate", 0, DOC_ENUM | DOC_INT);
-    document_skelanime(sk, sk->bone);
-    document_assign(sk->g->name, "MAX", numBones + 1, DOC_ENUM | DOC_INT);
-    document_assign(sk->g->name, "", 1, DOC_ENUM | T_ENUM);
+	document_assign(sk->g->name, "", 0, DOC_ENUM | T_ENUM);
+	document_assign(sk->g->name, "Root.Translate", 0, DOC_ENUM | DOC_INT);
+	document_skelanime(sk, sk->bone);
+	document_assign(sk->g->name, "MAX", numBones + 1, DOC_ENUM | DOC_INT);
+	document_assign(sk->g->name, "", 1, DOC_ENUM | T_ENUM);
 	
 	/* note header offset for later */
 	gUdata->dlistOffset = headOfs;
@@ -2462,22 +2462,22 @@ void *zobj_writePbody(
 		/* write identity matrices */
 	//	localMatrix(bin, sk, mtxaddr, limb);
 	}
-    
-    if (strstr(sk->extra, "z64dummy")) {
-        void document_skelanime(struct objex_skeleton* sk, struct objex_bone* bone) {
-            document_assign(sk->g->name, bone->name, 0, DOC_ENUM | DOC_INT);
-            if (bone->child)
-                document_skelanime(sk, bone->child);
-            if (bone->next)
-                document_skelanime(sk, bone->next);
-        }
-        
-        document_assign(sk->g->name, "", 0, DOC_ENUM | T_ENUM);
-        document_assign(sk->g->name, "Root.Translate", 0, DOC_ENUM | DOC_INT);
-        document_skelanime(sk, sk->bone);
-        document_assign(sk->g->name, "MAX", 0, DOC_ENUM | DOC_INT);
-        document_assign(sk->g->name, "", 1, DOC_ENUM | T_ENUM);
-    }
+	
+	if (strstr(sk->extra, "z64dummy")) {
+		void document_skelanime(struct objex_skeleton* sk, struct objex_bone* bone) {
+			document_assign(sk->g->name, bone->name, 0, DOC_ENUM | DOC_INT);
+			if (bone->child)
+				document_skelanime(sk, bone->child);
+			if (bone->next)
+				document_skelanime(sk, bone->next);
+		}
+		
+		document_assign(sk->g->name, "", 0, DOC_ENUM | T_ENUM);
+		document_assign(sk->g->name, "Root.Translate", 0, DOC_ENUM | DOC_INT);
+		document_skelanime(sk, sk->bone);
+		document_assign(sk->g->name, "MAX", 0, DOC_ENUM | DOC_INT);
+		document_assign(sk->g->name, "", 1, DOC_ENUM | T_ENUM);
+	}
 	
 	return success;
 #if 0
