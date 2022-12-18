@@ -475,9 +475,10 @@ compbuf_new(
 				break;
                 
             case OBJEX_VTXSHADE_ALPHA:
-				if (vc)
-                    alpha = (vc->r + vc->g + vc->b) / 3.0f,
+				if (vc) {
+                    alpha = (vc->r + vc->g + vc->b) / 3.0f;
 					vc = 0;
+                }
 				break;
 			
 			case OBJEX_VTXSHADE_COLOR:
