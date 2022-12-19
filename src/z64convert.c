@@ -245,8 +245,8 @@ const char *z64convert(
 	unsigned int baseOfs = 0x06000000;
 	struct objex *obj = 0;
 	int playAs = 0;
-	char *namHeader = NULL;
-	char *namLinker = NULL;
+	const char *namHeader = NULL;
+	const char *namLinker = NULL;
 	FILE *header = NULL;
 	FILE *linker = NULL;
 	
@@ -299,7 +299,6 @@ const char *z64convert(
 		else if (streq(argv[i], "--header"))
 		{
 			namHeader = argv[++i];
-			
 		}
 		else if (streq(argv[i], "--linker"))
 		{

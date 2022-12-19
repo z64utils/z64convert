@@ -62,7 +62,7 @@ void document_free(void) {
 	sDocumentHead = NULL;
 }
 
-static const char*document_basename() {
+static char *document_basename() {
 	static char buffer[1024 * 8];
 	int point = 0;
 	int slash = 0;
