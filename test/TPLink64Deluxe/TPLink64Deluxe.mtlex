@@ -636,6 +636,7 @@ gbi _loadtexels
 gbi gsDPSetTileSize(G_TX_RENDERTILE, 0, 0, qu102(_texel0width-1), qu102(_texel0height-1))
 newtex "eyes.png"
 map textures\eyes.png
+texturebank textures\eyes-bank.png
 pointer 0x08000000
 format ci8
 priority 10
@@ -1064,6 +1065,7 @@ gbi _loadtexels
 gbi gsDPSetTileSize(G_TX_RENDERTILE, 0, 0, qu102(_texel0width-1), qu102(_texel0height-1))
 newtex "mouth.png"
 map textures\mouth.png
+texturebank textures\mouth-bank.png
 pointer 0x09000000
 format ci8
 priority 9
