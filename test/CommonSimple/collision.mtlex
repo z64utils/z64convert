@@ -1,0 +1,7 @@
+# Blender MTL File: 'z64scene_sample_test.blend'
+# Material Count: 1
+exportid 1671492412.709178
+newmtl "Material.002"
+attrib collision.SOUND_STONE
+attrib collision.WALL_BARRIER
+attrib collision.FLOOR_NOFALLDMG
