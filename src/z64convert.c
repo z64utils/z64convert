@@ -1120,6 +1120,51 @@ const char *z64convert(
 	if (only && except)
 		return "'only' and 'except' cannot be used simultaneously";
 	
+	/* ad hoc multi-file test */
+	#if 1
+	{
+		struct model *quicktest(const char *in, const char *out)
+		{
+			return model_load(
+				in
+				, out
+				, namHeader
+				, namLinker
+				, only
+				, except
+				, baseOfs
+				, scale
+				, docs
+				, playAs
+				, die
+			);
+		}
+		
+		#define TESTDIR "test/CommonSimple/"
+		#define BINDIR "bin/"
+		baseOfs = 0x03000000;
+		struct model *room0 = quicktest(TESTDIR "room0.objex", BINDIR "room0.bin");
+		struct model *room1 = quicktest(TESTDIR "room1.objex", BINDIR "room1.bin");
+		baseOfs = 0x02000000;
+		struct model *common = quicktest(TESTDIR "collision.objex", BINDIR "common.bin");
+		
+		if (sgRval)
+			return sgRval;
+		
+		struct objex *rooms[] = { room0->obj, room1->obj };
+		objex_resolve_common_array(common->obj, rooms, sizeof(rooms) / sizeof(*rooms));
+		
+		if (model_commit(common) || model_commit(room0) || model_commit(room1))
+			return sgRval;
+		
+		model_free(room0);
+		model_free(room1);
+		model_free(common);
+		
+		return sgRval;
+	}
+	#endif
+	
 	/* load model */
 	if (!(model = model_load(
 			in

@@ -90,6 +90,8 @@ extern struct objex *objex_load(
 );
 extern const char *objex_errmsg(void);
 extern void objex_localize(struct objex *objex);
+extern void objex_resolve_common(struct objex *dst, struct objex *needle, struct objex *haystack);
+extern void objex_resolve_common_array(struct objex *dst, struct objex *src[], int srcNum);
 extern void objex_free(struct objex *objex, void free(void *));
 extern struct objex_skeleton *objex_group_split(
 	struct objex *objex

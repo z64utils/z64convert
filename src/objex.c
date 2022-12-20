@@ -3341,6 +3341,36 @@ struct objex_g *objex_g_index(struct objex *objex, const int index)
 	return 0;
 }
 
+void objex_resolve_common(struct objex *dst, struct objex *needle, struct objex *haystack)
+{
+	/* ignore self search */
+	if (needle == dst || needle == haystack)
+		return;
+	
+	/* TODO for every texture within needle which also exsists
+	 *      within haystack and doesn't already exist within dst,
+	 *      copy into dst and redirect needle and haystack to dst
+	 *      (if haystack == dst, don't search dst or do the copy)
+	 */
+}
+
+void objex_resolve_common_array(struct objex *dst, struct objex *src[], int srcNum)
+{
+	assert(dst);
+	assert(src);
+	assert(srcNum > 0);
+	
+	for (int i = 0; i < srcNum; ++i)
+	{
+		/* compare against dst once */
+		objex_resolve_common(dst, src[i], dst);
+		
+		/* compare every index against every other index */
+		for (int k = 0; k < srcNum; ++k)
+			objex_resolve_common(dst, src[i], src[k]);
+	}
+}
+
 void objex_free(struct objex *objex, void free(void *))
 {
 #define free_if(X) if (X) { free(X); X = 0; }
