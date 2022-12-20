@@ -160,6 +160,10 @@ struct objex_texture
 	unsigned int pointer; /* pointer override */
 	int index; /* Nth item initialized, starting at 0 (order read) */
 	/* do not allow mixing formats of shared palette slots */
+	int fmt;
+	int bpp;
+	unsigned sz;
+	unsigned crc32;
 };
 
 /* material */

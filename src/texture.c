@@ -615,6 +615,45 @@ void *texture_procTexture(struct objex_texture *tex)
 	/* texture already loaded */
 	png = tex->pix;
 	
+	/* do crc32 */
+	{
+		static unsigned table[256];
+		
+		/* generate table */
+		if (!table[1])
+		{
+			unsigned poly = 0xedb88320;
+			
+			for (int i = 0; i < 256; ++i)
+			{
+				unsigned crc = i;
+				
+				for (int k = 8; k > 0; --k)
+				{
+					if (crc & 1)
+						crc = (crc >> 1) ^ poly;
+					else
+						crc >>= 1;
+				}
+				
+				table[i] = crc;
+			}
+		}
+		
+		/* generate crc */
+		if (tex->crc32 == 0)
+		{
+			unsigned char *png8 = png;
+			int len = tex->w * tex->h * 4;
+			unsigned crc = ~0;
+			
+			for (int i = 0; i < len; ++i)
+				crc = (crc >> 8) ^ table[(crc ^ png8[i]) & 0xff];
+			
+			tex->crc32 = crc;
+		}
+	}
+	
 	if (!png || !udata)
 		return errmsg("texture '%s' not loaded", tex->name);
 	
@@ -803,6 +842,10 @@ void *texture_procTexture(struct objex_texture *tex)
 	
 	if (tex->palette && tex->isUsed)
 		tex->palette->isUsed = 1;
+	
+	tex->sz = sz;
+	tex->fmt = fmt;
+	tex->bpp = bpp;
 	
 	return success;
 #undef fail
