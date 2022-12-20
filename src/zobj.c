@@ -2114,6 +2114,7 @@ void *zobjProxyArray_print(
 	 * deeply enough, so we need a way to unnest them!
 	 */
 	/* write C version */
+	/* TODO @rankaisija please adapt this to use doc.c or doc.h in some way */
 	fprintf(docs
 		, "static const uint32_t proxy_%s[] = {"
 		, Canitize(proxyArray->name, 0)

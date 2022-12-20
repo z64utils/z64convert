@@ -436,6 +436,7 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 	}
 	
 	/* collider C output */
+	/* TODO @rankaisija please adapt this to use doc.c or doc.h in some way */
 	for (struct objex_g *g = obj->g; g; g = g->next)
 	{
 		/* skip those that should be skipped */
