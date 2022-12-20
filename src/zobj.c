@@ -12,6 +12,7 @@
 #include "put.h"
 #include "texture.h" /* texUdata */
 #include <gfxasm.h>
+#include "doc.h"
 
 #include "ksort.h"
 
@@ -86,91 +87,91 @@ void zobjProxyArray_free(struct zobjProxyArray *p)
 
 /* matrix.c */
 void guRTSF(float r, float p, float h, float x, float y, float z, float sx, float sy, float sz, float mf[4][4]) {
-    float dtor = 3.1415926f / 180.0f; //Degrees to Radians
-    float sinr, sinp, sinh, cosr, cosp, cosh; //Sine Roll, Sine Pitch, Sine Heading, Cosine Roll, Cosine Pitch, Cosine Heading
+	float dtor = 3.1415926f / 180.0f; //Degrees to Radians
+	float sinr, sinp, sinh, cosr, cosp, cosh; //Sine Roll, Sine Pitch, Sine Heading, Cosine Roll, Cosine Pitch, Cosine Heading
 
-    //Math
-    r *= dtor; //r (degrees) to radians
-    p *= dtor; //p (degrees) to radians
-    h *= dtor; //h (degrees) to radians
-    sinr = sin(r);//Sine Roll
-    cosr = cos(r);//Cosine Roll
-    sinp = sin(p);//Sine Pitch
-    cosp = cos(p);//Cosine Pitch
-    sinh = sin(h);//Sine Heading
-    cosh = cos(h);//Cosine Heading
+	//Math
+	r *= dtor; //r (degrees) to radians
+	p *= dtor; //p (degrees) to radians
+	h *= dtor; //h (degrees) to radians
+	sinr = sin(r);//Sine Roll
+	cosr = cos(r);//Cosine Roll
+	sinp = sin(p);//Sine Pitch
+	cosp = cos(p);//Cosine Pitch
+	sinh = sin(h);//Sine Heading
+	cosh = cos(h);//Cosine Heading
 
-    //Floating-Point Matrix
-    mf[0][0] = ((cosp * cosh) * 1.0f) * sx;
-    mf[0][1] = (cosp * sinh) * 1.0f;
-    mf[0][2] = (-sinp) * 1.0f;
-    mf[0][3] = 0.0f;
+	//Floating-Point Matrix
+	mf[0][0] = ((cosp * cosh) * 1.0f) * sx;
+	mf[0][1] = (cosp * sinh) * 1.0f;
+	mf[0][2] = (-sinp) * 1.0f;
+	mf[0][3] = 0.0f;
 
-    mf[1][0] = (sinr * sinp * cosh - cosr * sinh) * 1.0f;
-    mf[1][1] = ((sinr * sinp * sinh + cosr * cosh) * 1.0f) * sy;
-    mf[1][2] = (sinr * cosp) * 1.0f;
-    mf[1][3] = 0.0f;
+	mf[1][0] = (sinr * sinp * cosh - cosr * sinh) * 1.0f;
+	mf[1][1] = ((sinr * sinp * sinh + cosr * cosh) * 1.0f) * sy;
+	mf[1][2] = (sinr * cosp) * 1.0f;
+	mf[1][3] = 0.0f;
 
-    mf[2][0] = (cosr * sinp * cosh + sinr * sinh) * 1.0f;
-    mf[2][1] = (cosr * sinp * sinh - sinr * cosh) * 1.0f;
-    mf[2][2] = ((cosr * cosp) * 1.0f) * sz;
-    mf[2][3] = 0.0f;
+	mf[2][0] = (cosr * sinp * cosh + sinr * sinh) * 1.0f;
+	mf[2][1] = (cosr * sinp * sinh - sinr * cosh) * 1.0f;
+	mf[2][2] = ((cosr * cosp) * 1.0f) * sz;
+	mf[2][3] = 0.0f;
 
-    mf[3][0] = x;
-    mf[3][1] = y;
-    mf[3][2] = z;
-    mf[3][3] = 1.0f;
+	mf[3][0] = x;
+	mf[3][1] = y;
+	mf[3][2] = z;
+	mf[3][3] = 1.0f;
 
-    //return mf;
-    
-    /*int a;
-    for(a=0;a<4;a++) {
-    	int b;
-    	for(b=0;b<4;b++) {
-    		printf("mf[%d][%d] = %f\n",a,b,mf[a][b]);
-    	}
-    }*/
+	//return mf;
+	
+	/*int a;
+	for(a=0;a<4;a++) {
+		int b;
+		for(b=0;b<4;b++) {
+			printf("mf[%d][%d] = %f\n",a,b,mf[a][b]);
+		}
+	}*/
 }
 
 /*static long FTOFIX32(float x) {
-    unsigned output = (long)((x) * (float)0x00010000);
-    return output;
+	unsigned output = (long)((x) * (float)0x00010000);
+	return output;
 }*/
 
 #define FTOFIX32(X) (long)((X)*(float)0x00010000)
 
 void *guMtxF2L(float mf[4][4]) {
-    static unsigned char block[0x40];
-    long e1 = 0, e2 = 0;
-    long ai = 0, af = 0;
-    unsigned char *rval=block;
-    int i, j;
+	static unsigned char block[0x40];
+	long e1 = 0, e2 = 0;
+	long ai = 0, af = 0;
+	unsigned char *rval=block;
+	int i, j;
 
-    for ( i = 0; i < 4; i++)
-    {
-        for ( j = 0; j < 2; j++)
-        {
-            e1 = FTOFIX32(mf[i][j * 2]);
-            e2 = FTOFIX32(mf[i][(j * 2) + 1]);
-            ai = (e1 & 0xFFFF0000) | ((e2 >> 16) & 0xFFFF);
-            //Console.Write("{0:X8} ", ai);
-            put32(rval,ai); rval+=4;
-        }
-        //Console.Write("\n");
-    }
-    for ( i = 0; i < 4; i++)
-    {
-        for ( j = 0; j < 2; j++)
-        {
-            e1 = FTOFIX32(mf[i][j * 2]);
-            e2 = FTOFIX32(mf[i][(j * 2) + 1]);
-            af = ((e1 << 16) & 0xFFFF0000) | (e2 & 0xFFFF);
-            //Console.Write("{0:X8} ", af);
-            put32(rval,af); rval+=4;
-        }
-        //Console.Write("\n");
-    }
-    return block;
+	for ( i = 0; i < 4; i++)
+	{
+		for ( j = 0; j < 2; j++)
+		{
+			e1 = FTOFIX32(mf[i][j * 2]);
+			e2 = FTOFIX32(mf[i][(j * 2) + 1]);
+			ai = (e1 & 0xFFFF0000) | ((e2 >> 16) & 0xFFFF);
+			//Console.Write("{0:X8} ", ai);
+			put32(rval,ai); rval+=4;
+		}
+		//Console.Write("\n");
+	}
+	for ( i = 0; i < 4; i++)
+	{
+		for ( j = 0; j < 2; j++)
+		{
+			e1 = FTOFIX32(mf[i][j * 2]);
+			e2 = FTOFIX32(mf[i][(j * 2) + 1]);
+			af = ((e1 << 16) & 0xFFFF0000) | (e2 & 0xFFFF);
+			//Console.Write("{0:X8} ", af);
+			put32(rval,af); rval+=4;
+		}
+		//Console.Write("\n");
+	}
+	return block;
 }
 /* end matrix.c */
 
@@ -439,6 +440,7 @@ compbuf_new(
 {
 	float w = 1;
 	float h = 1;
+	uint8_t alpha = 0xFF;
 	if (tex)
 	{
 		w = tex->w;
@@ -471,6 +473,13 @@ compbuf_new(
 				if (vc)
 					vc = 0;
 				break;
+				
+			case OBJEX_VTXSHADE_ALPHA:
+				if (vc) {
+					alpha = (vc->r + vc->g + vc->b) / 3.0f;
+					vc = 0;
+				}
+				break;
 			
 			case OBJEX_VTXSHADE_COLOR:
 				if (vn)
@@ -502,7 +511,7 @@ compbuf_new(
 	else if (vn)
 	{
 		/* normal */
-		result.rgba = 0xFF;
+		result.rgba = alpha;
 		unsigned char x = vn->x * 127.0;
 		unsigned char y = vn->y * 127.0;
 		unsigned char z = vn->z * 127.0;
@@ -1128,9 +1137,15 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 		mtl->useMtlOfs = vftell(bin);
 		
 		/* print docs */
-		fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE "  0x%08X\n"
-			, Canitize(mtl->name, 1)
-			, (int)vftell(bin) + baseOfs
+		// fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE "  0x%08X\n"
+		// 	, Canitize(mtl->name, 1)
+		// 	, (int)vftell(bin) + baseOfs
+		// );
+		document_assign(
+			mtl->name,
+			NULL,
+			(int)vftell(bin) + baseOfs,
+			T_MTL
 		);
 		
 		/* texture dimensions */
@@ -1149,17 +1164,29 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 			h = tex->h / udata->virtDiv;
 			
 			sprintf(buf, "TEXEL%d_W", i);
-			fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " %d\n"
-				, Canitize(mtl->name, 1)
-				, buf
-				, w
+			// fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " %d\n"
+			// 	, Canitize(mtl->name, 1)
+			// 	, buf
+			// 	, w
+			// );
+			document_assign(
+				mtl->name,
+				buf,
+				w,
+				T_MTL | DOC_INT
 			);
 			
 			sprintf(buf, "TEXEL%d_H", i);
-			fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " %d\n"
-				, Canitize(mtl->name, 1)
-				, buf
-				, h
+			// fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " %d\n"
+			// 	, Canitize(mtl->name, 1)
+			// 	, buf
+			// 	, h
+			// );
+			document_assign(
+				mtl->name,
+				buf,
+				h,
+				T_MTL | DOC_INT
 			);
 		}
 	}
@@ -1245,11 +1272,18 @@ void *zobj_writeUsemtl(VFILE *bin, struct objex_material *mtl)
 					 */
 					ofs = 0;
 					if (ex)
-						fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " 0x%08X\n"
-							, Canitize(mtl->name, 1)
-							, ex
-							, (int)vftell(bin) + baseOfs + ofs
+						document_assign(
+							mtl->name,
+							ex,
+							(int)vftell(bin) + baseOfs + ofs,
+							T_MTL
 						);
+						// fprintf(docs, DOCS_DEF "MTL_" DOCS_SPACE_2 " 0x%08X\n"
+						// 	, Canitize(mtl->name, 1)
+						// 	, ex
+						// 	, (int)vftell(bin) + baseOfs + ofs
+						// );
+						
 				}
 				vfput32(bin, r[0]);
 				vfput32(bin, r[1]);
@@ -1420,8 +1454,8 @@ void *zobj_writeDlist(
 		if (g->bone
 			&& g->bone->skeleton->isPbody
 			&& g->hasSplit /* hasSplit is necessary; if (!hasSplit),
-			                * handle as any other mesh assigned to
-			                * a single bone would be */
+							* handle as any other mesh assigned to
+							* a single bone would be */
 		)
 			isPbody = 1;
 		
@@ -1851,9 +1885,15 @@ void *zobj_writeDlist(
 			}
 			
 			/* print docs */
-			fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
-				, Canitize(g->name, 1)
-				, (int)vftell(bin) + baseOfs
+			// fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
+			// 	, Canitize(g->name, 1)
+			// 	, (int)vftell(bin) + baseOfs
+			// );
+			document_assign(
+				g->name,
+				NULL,
+				(int)vftell(bin) + baseOfs,
+				T_DL
 			);
 			debugf(" > '%s' address %08X\n", g->name, (int)vftell(bin) + baseOfs);
 			
@@ -1928,9 +1968,15 @@ void *zobj_writeDlist(
 		gUdata->dlistOffset = n;
 		
 		/* proxy docs */
-		fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
-			, CanitizeProxy(g->name, 1)
-			, n + baseOfs
+		// fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
+		// 	, CanitizeProxy(g->name, 1)
+		// 	, n + baseOfs
+		// );
+		document_assign(
+			g->name,
+			NULL,
+			n + baseOfs,
+			T_DL
 		);
 	}
 	
@@ -2068,6 +2114,7 @@ void *zobjProxyArray_print(
 	 * deeply enough, so we need a way to unnest them!
 	 */
 	/* write C version */
+	/* TODO @rankaisija please adapt this to use doc.c or doc.h in some way */
 	fprintf(docs
 		, "static const uint32_t proxy_%s[] = {"
 		, Canitize(proxyArray->name, 0)
@@ -2162,10 +2209,16 @@ void *zobj_writeSkeleton(
 	
 		/* proxy docs */
 		if (g->attrib && strstr(g->attrib, "NOSKEL") == 0)
-			fprintf(docs, DOCS_DEF "PROXY_" DOCS_SPACE "0x%08X\n"
-				, Canitize(g->name, 1)
-				, (int)vftell(bin) + baseOfs
+			document_assign(
+				g->name,
+				NULL,
+				(int)vftell(bin) + baseOfs,
+				T_PROXY
 			);
+			// fprintf(docs, DOCS_DEF "PROXY_" DOCS_SPACE "0x%08X\n"
+			// 	, Canitize(g->name, 1)
+			// 	, (int)vftell(bin) + baseOfs
+			// );
 		
 		int skproxyindex;
 		void *skproxy(VFILE *fp, struct objex_bone *b, enum x x)
@@ -2199,10 +2252,16 @@ void *zobj_writeSkeleton(
 					gUdata->dlistOffset = n;
 				
 					/* proxy docs */
-					fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
-						, CanitizeProxy(g->name, 1)
-						, n + baseOfs
+					document_assign(
+						g->name,
+						NULL,
+						n + baseOfs,
+						T_DL
 					);
+					// fprintf(docs, DOCS_DEF "DL_" DOCS_SPACE "   0x%08X\n"
+					// 	, CanitizeProxy(g->name, 1)
+					// 	, n + baseOfs
+					// );
 				}
 				
 				if (x & WRITE_TABLE)
@@ -2304,20 +2363,26 @@ void *zobj_writeSkeleton(
 //		, "#define %s 0x%08X /* %s */\n"
 //		, sk->name, baseOfs + headOfs, sk->name
 //	);
-	fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE " 0x%08X\n"
-		, Canitize(sk->g->name, 1)
-		, (int)baseOfs + headOfs
+	document_assign(
+		sk->g->name,
+		NULL,
+		(int)baseOfs + headOfs,
+		T_SKEL
 	);
-	fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE_2 " %d\n"
-		, Canitize(sk->g->name, 1)
-		, "NUMBONES"
-		, numBones
-	);
-	fprintf(docs, DOCS_DEF "SKEL_" DOCS_SPACE_2 " (%d+1)\n"
-		, Canitize(sk->g->name, 1)
-		, "NUMBONES_DT"
-		, numBones
-	);
+	
+	void document_skelanime(struct objex_skeleton* sk, struct objex_bone* bone) {
+		document_assign(sk->g->name, bone->name, 0, DOC_ENUM | DOC_INT);
+		if (bone->child)
+			document_skelanime(sk, bone->child);
+		if (bone->next)
+			document_skelanime(sk, bone->next);
+	}
+
+	document_assign(sk->g->name, "", 0, DOC_ENUM | T_ENUM);
+	document_assign(sk->g->name, "Root.Translate", 0, DOC_ENUM | DOC_INT);
+	document_skelanime(sk, sk->bone);
+	document_assign(sk->g->name, "MAX", numBones + 1, DOC_ENUM | DOC_INT);
+	document_assign(sk->g->name, "", 1, DOC_ENUM | T_ENUM);
 	
 	/* note header offset for later */
 	gUdata->dlistOffset = headOfs;
@@ -2397,6 +2462,22 @@ void *zobj_writePbody(
 		walk(sk->bone);
 		/* write identity matrices */
 	//	localMatrix(bin, sk, mtxaddr, limb);
+	}
+	
+	if (strstr(sk->extra, "z64dummy")) {
+		void document_skelanime(struct objex_skeleton* sk, struct objex_bone* bone) {
+			document_assign(sk->g->name, bone->name, 0, DOC_ENUM | DOC_INT);
+			if (bone->child)
+				document_skelanime(sk, bone->child);
+			if (bone->next)
+				document_skelanime(sk, bone->next);
+		}
+		
+		document_assign(sk->g->name, "", 0, DOC_ENUM | T_ENUM);
+		document_assign(sk->g->name, "Root.Translate", 0, DOC_ENUM | DOC_INT);
+		document_skelanime(sk, sk->bone);
+		document_assign(sk->g->name, "MAX", 0, DOC_ENUM | DOC_INT);
+		document_assign(sk->g->name, "", 1, DOC_ENUM | T_ENUM);
 	}
 	
 	return success;
@@ -2641,10 +2722,16 @@ void *zobj_writeStdAnim(
 //	debugf("anim %08X : %s\n", (int)vftell(bin), anim->name);
 	if (one_animated_skeleton)
 	{
-		fprintf(docs, DOCS_DEF "ANIM_" DOCS_SPACE " 0x%08X\n"
-			, Canitize(anim->name, 1)
-			, (int)vftell(bin) + baseOfs
+		document_assign(
+			anim->name,
+			NULL,
+			(int)vftell(bin) + baseOfs,
+			T_ANIM
 		);
+		// fprintf(docs, DOCS_DEF "ANIM_" DOCS_SPACE " 0x%08X\n"
+		// 	, Canitize(anim->name, 1)
+		// 	, (int)vftell(bin) + baseOfs
+		// );
 	}
 	
 	/* multiple animated skeletons */
@@ -2652,11 +2739,17 @@ void *zobj_writeStdAnim(
 	{
 		char skelName[1024];
 		strcpy(skelName, Canitize(anim->sk->name, 1));
-		fprintf(docs, DOCS_DEF "ANIM_" DOCS_SPACE_2 " 0x%08X\n"
-			, skelName
-			, Canitize(anim->name, 1)
-			, (int)vftell(bin) + baseOfs
+		document_assign(
+			skelName,
+			anim->name,
+			(int)vftell(bin) + baseOfs,
+			T_ANIM
 		);
+		// fprintf(docs, DOCS_DEF "ANIM_" DOCS_SPACE_2 " 0x%08X\n"
+		// 	, skelName
+		// 	, Canitize(anim->name, 1)
+		// 	, (int)vftell(bin) + baseOfs
+		// );
 	}
 	vfput16(bin, frames);
 	vfput16(bin, 0);

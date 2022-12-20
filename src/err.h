@@ -21,6 +21,7 @@
 #define strcspn (int)strcspn
 
 #define DOCS_DEF "#define  "
+#define DOCS_EXT "extern "
 #define DOCS_SPACE "%-24s "
 #define DOCS_SPACE_2 "%s_%-24s "
 #define DOCS_SPACE_NUM "%-24s_%d "

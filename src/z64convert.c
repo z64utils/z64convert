@@ -11,18 +11,19 @@
 #include "put.h"
 #include "collider.h"
 #include "collision.h"
+#include "doc.h"
 
 #define DSTDERR docs
 
 /* revisions:
  * v1.0.2
-    * better circular dependency detection (bug report by Zeldaboy14)
-    * QOL improvement on proxy skeleton array output: report empty items
+ * better circular dependency detection (bug report by Zeldaboy14)
+ * QOL improvement on proxy skeleton array output: report empty items
  * v1.0.1
-    * dynamic vertexshading mode implementation is now complete (rankaisija)
+ * dynamic vertexshading mode implementation is now complete (rankaisija)
  * v1.0.0 rev 0
-    * added --silent argument
-    * added --print-palettes argument for printing palettes
+ * added --silent argument
+ * added --print-palettes argument for printing palettes
  */
 
 #include "vfile.h"
@@ -35,15 +36,15 @@ int printPalettes = 0;
 
 static char errstr[1024] = {0};
 #define fail(...) { \
-   rval = errstr; \
-   if (!errstr[0]) \
-      snprintf(errstr, sizeof(errstr), __VA_ARGS__); \
-   goto L_cleanup; \
+		rval = errstr; \
+		if (!errstr[0]) \
+		snprintf(errstr, sizeof(errstr), __VA_ARGS__); \
+		goto L_cleanup; \
 }
 #define fail0(...) { \
-   if (!errstr[0]) \
-      snprintf(errstr, sizeof(errstr), __VA_ARGS__); \
-   return 0; \
+		if (!errstr[0]) \
+		snprintf(errstr, sizeof(errstr), __VA_ARGS__); \
+		return 0; \
 }
 
 char *xstrndup(const char *s, int num)
@@ -86,8 +87,8 @@ static int streq(const char *a, const char *b)
 static int isMesh(struct objex_g *g)
 {
 	if (!g
-		|| streq(g->name, "collision.")
-		|| streq(g->name, "collider.")
+	   || streq(g->name, "collision.")
+	   || streq(g->name, "collider.")
 	)
 		return 0;
 	
@@ -112,7 +113,7 @@ static void *commaListGroupAssert(
 		{
 			/* only compare if string lengths equal */
 			if ((end - haystack) == strlen(g->name)
-				&& !memcmp(haystack, g->name, end - haystack)
+			   && !memcmp(haystack, g->name, end - haystack)
 			)
 				break;
 		}
@@ -148,7 +149,7 @@ static int commaListContains(const char *haystack, const char *needle)
 		
 		/* only compare if string lengths equal */
 		if ((end - haystack) == strlen(needle)
-			&& !memcmp(haystack, needle, end - haystack)
+		   && !memcmp(haystack, needle, end - haystack)
 		)
 			return 1;
 		
@@ -192,28 +193,34 @@ static void *retriveColliderMtlAttribs(
 	const char *ss;
 	
 	if ((ss = strstr(att, "collider.bodyFlags"))
-		&& sscanf(ss, "bodyFlags %X", &me->bodyFlags) != 1
-	) fail0("error: attrib '%s' not hex", "collider.bodyFlags");
+	   && sscanf(ss, "bodyFlags %X", &me->bodyFlags) != 1
+	)
+		fail0("error: attrib '%s' not hex", "collider.bodyFlags");
 	
 	if ((ss = strstr(att, "collider.touchFlags"))
-		&& sscanf(ss, "touchFlags %X", &me->touchFlags) != 1
-	) fail0("error: attrib '%s' not hex", "collider.touchFlags");
+	   && sscanf(ss, "touchFlags %X", &me->touchFlags) != 1
+	)
+		fail0("error: attrib '%s' not hex", "collider.touchFlags");
 	
 	if ((ss = strstr(att, "collider.touchFx"))
-		&& sscanf(ss, "touchFx %X", &me->touchFx) != 1
-	) fail0("error: attrib '%s' not hex", "collider.touchFx");
+	   && sscanf(ss, "touchFx %X", &me->touchFx) != 1
+	)
+		fail0("error: attrib '%s' not hex", "collider.touchFx");
 	
 	if ((ss = strstr(att, "collider.bumpFlag"))
-		&& sscanf(ss, "bumpFlag %X", &me->bumpFlag) != 1
-	) fail0("error: attrib '%s' not hex", "collider.bumpFlag");
+	   && sscanf(ss, "bumpFlag %X", &me->bumpFlag) != 1
+	)
+		fail0("error: attrib '%s' not hex", "collider.bumpFlag");
 	
 	if ((ss = strstr(att, "collider.bumpFx"))
-		&& sscanf(ss, "bumpFx %X", &me->bumpFx) != 1
-	) fail0("error: attrib '%s' not hex", "collider.bumpFx");
+	   && sscanf(ss, "bumpFx %X", &me->bumpFx) != 1
+	)
+		fail0("error: attrib '%s' not hex", "collider.bumpFx");
 	
 	if ((ss = strstr(att, "collider.tchBmpBdy"))
-		&& sscanf(ss, "tchBmpBdy %X", &me->tchBmpBdy) != 1
-	) fail0("error: attrib '%s' not hex", "collider.tchBmpBdy");
+	   && sscanf(ss, "tchBmpBdy %X", &me->tchBmpBdy) != 1
+	)
+		fail0("error: attrib '%s' not hex", "collider.tchBmpBdy");
 	
 	return success;
 }
@@ -238,31 +245,39 @@ const char *z64convert(
 	unsigned int baseOfs = 0x06000000;
 	struct objex *obj = 0;
 	int playAs = 0;
+	const char *namHeader = 0;
+	const char *namLinker = 0;
+	FILE *header = 0;
+	FILE *linker = 0;
 	
 	for (int i = 1; i < argc; ++i)
 	{
 		if (streq(argv[i], "--in"))
+		{
 			in = argv[++i];
+			document_setFileName(argv[i]);
+		}
 		else if (streq(argv[i], "--out"))
 			out = argv[++i];
 		else if (streq(argv[i], "--scale"))
 		{
 			if (!argv[i+1]
-				|| sscanf(argv[++i], "%f", &scale) != 1
+			   || sscanf(argv[++i], "%f", &scale) != 1
 			)
 				return "invalid arguments";
 		}
 		else if (streq(argv[i], "--address"))
 		{
 			if (!argv[i+1]
-				|| sscanf(argv[++i], "%X", &baseOfs) != 1
+			   || sscanf(argv[++i], "%X", &baseOfs) != 1
 			)
 				return "invalid arguments";
 		}
 		else if (streq(argv[i], "--playas"))
 			playAs = 1;
 		else if (streq(argv[i], "--silent"))
-			{ /* do nothing */ }
+		{         /* do nothing */
+		}
 		else if (streq(argv[i], "--print-palettes"))
 			printPalettes = 1;
 		else if (streq(argv[i], "--only"))
@@ -278,7 +293,17 @@ const char *z64convert(
 				return "--except incomplete";
 		}
 		else if (streq(argv[i], "--gui_errors"))
-			/* do nothing */;
+		{        /* do nothing */
+			;
+		}
+		else if (streq(argv[i], "--header"))
+		{
+			namHeader = argv[++i];
+		}
+		else if (streq(argv[i], "--linker"))
+		{
+			namLinker = argv[++i];
+		}
 		else
 			fail("unknown argument '%.64s'", argv[i]);
 	}
@@ -318,26 +343,40 @@ const char *z64convert(
 	/* allocates and initializes objexUdata */
 	zobj_initObjex(obj, baseOfs, docs);
 	
+	#if 0 // Do not see this as necessary, Objex2 gives errors for this already
 	if (obj->softinfo.animation_framerate
-		&& !streq(obj->softinfo.animation_framerate, "20")
-		&& obj->anim
+	   && !streq(obj->softinfo.animation_framerate, "20")
+	   && obj->anim
 	)
-		fprintf(docs,
-			"/* WARNING:\n"
+	{
+		document_assign(
+			NULL
+			, "/* WARNING:\n"
 			" * your 3D software is set to %sfps, so the converted\n"
 			" * animations may run faster or slower than expected\n"
 			" */\n"
-			, obj->softinfo.animation_framerate
+			, strtol(obj->softinfo.animation_framerate, NULL, 10)
+			, DOC_INT
 		);
+		// fprintf(docs,
+		// 	"/* WARNING:\n"
+		// 	" * your 3D software is set to %sfps, so the converted\n"
+		// 	" * animations may run faster or slower than expected\n"
+		// 	" */\n"
+		// 	, obj->softinfo.animation_framerate
+		// );
+	}
+	#endif
+	
 	
 	/* load and process textures and palettes */
 	if (
 //		!fprintf(stderr, "loading textures...\n") ||
 		!texture_loadAll(obj)
 //		|| !fprintf(stderr, "processing shared palettes...\n")
-		|| !texture_procSharedPalettes(obj)
+	   || !texture_procSharedPalettes(obj)
 //		|| !fprintf(stderr, "processing textures...\n")
-		|| !texture_procTextures(obj)
+	   || !texture_procTextures(obj)
 	)
 		fail(texture_errmsg());
 	
@@ -349,16 +388,16 @@ const char *z64convert(
 			continue;
 		mtl->gbi = strdup(
 /*"gsSPTexture(qu016(0.999985), qu016(0.999985), 0, G_TX_RENDERTILE, G_ON),\n\
-gsDPPipeSync(),\n\
-gsDPSetRenderMode(AA_EN | Z_CMP | Z_UPD | IM_RD | CVG_DST_CLAMP | ZMODE_OPA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_FOG, G_BL_A_SHADE, G_BL_CLR_IN, G_BL_1MA), G_RM_AA_ZB_OPA_SURF2),\n\
-gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, 0, 0, 0, TEXEL0, PRIMITIVE, 0, COMBINED, 0, 0, 0, 0, COMBINED),\n\
-gsDPSetPrimColor(0, qu08(0.5), 0xFF, 0xFF, 0xFF, 0xFF),\n\
-gsSPSetGeometryMode(G_LIGHTING),\n\
-gsSPClearGeometryMode(G_CULL_BACK),\n\
-gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
-_loadtexels,\n\
-gsDPSetTileSize(G_TX_RENDERTILE, 0, 0, qu102(_texel0width-1), qu102(_texel0height-1))\n"*/
-"gsSPTexture(qu016(0.999985), qu016(0.999985), 0, G_TX_RENDERTILE, G_ON),\n\
+   gsDPPipeSync(),\n\
+   gsDPSetRenderMode(AA_EN | Z_CMP | Z_UPD | IM_RD | CVG_DST_CLAMP | ZMODE_OPA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_FOG, G_BL_A_SHADE, G_BL_CLR_IN, G_BL_1MA), G_RM_AA_ZB_OPA_SURF2),\n\
+   gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, 0, 0, 0, TEXEL0, PRIMITIVE, 0, COMBINED, 0, 0, 0, 0, COMBINED),\n\
+   gsDPSetPrimColor(0, qu08(0.5), 0xFF, 0xFF, 0xFF, 0xFF),\n\
+   gsSPSetGeometryMode(G_LIGHTING),\n\
+   gsSPClearGeometryMode(G_CULL_BACK),\n\
+   gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
+   _loadtexels,\n\
+   gsDPSetTileSize(G_TX_RENDERTILE, 0, 0, qu102(_texel0width-1), qu102(_texel0height-1))\n"*/
+			"gsSPTexture(qu016(0.999985), qu016(0.999985), 0, G_TX_RENDERTILE, G_ON),\n\
 gsDPPipeSync(),\n\
 gsDPSetRenderMode(AA_EN | Z_CMP | Z_UPD | IM_RD | CVG_DST_CLAMP | ZMODE_OPA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_FOG, G_BL_A_SHADE, G_BL_CLR_IN, G_BL_1MA), G_RM_AA_ZB_OPA_SURF2),\n\
 gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, 0, 0, 0, TEXEL0, PRIMITIVE, 0, COMBINED, 0, 0, 0, 0, COMBINED),\n\
@@ -367,9 +406,9 @@ gsSPGeometryMode(G_CULL_FRONT | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_FOG, G_
 _loadtexels,\n\
 gsDPSetTileSize(G_TX_RENDERTILE, 0, 0, qu102(_texel0width-1), qu102(_texel0height-1))\n"
 /*gbivar   cms0     \"G_TX_NOMIRROR | G_TX_CLAMP\"\
-gbivar   cmt0     \"G_TX_NOMIRROR | G_TX_CLAMP\"\
-gbivar   shifts0  0\
-gbivar   shiftt0  0\*/
+   gbivar   cmt0     \"G_TX_NOMIRROR | G_TX_CLAMP\"\
+   gbivar   shifts0  0\
+   gbivar   shiftt0  0\*/
 		);
 		if (!mtl->gbi)
 			fail(ERR_NOMEM);
@@ -397,11 +436,12 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 	}
 	
 	/* collider C output */
+	/* TODO @rankaisija please adapt this to use doc.c or doc.h in some way */
 	for (struct objex_g *g = obj->g; g; g = g->next)
 	{
 		/* skip those that should be skipped */
 		if (isExcluded(g, only, except)
-			|| !streq(g->name, "collider.")
+		   || !streq(g->name, "collider.")
 		)
 			continue;
 		
@@ -417,24 +457,29 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 		{
 			const char *ss;
 			if ((ss = strstr(g->attrib, "collider.type"))
-				&& sscanf(ss, "type %X", &type) != 1
-			) fail("error: attrib '%s' not hex", "collider.type");
+			   && sscanf(ss, "type %X", &type) != 1
+			)
+				fail("error: attrib '%s' not hex", "collider.type");
 			
 			if ((ss = strstr(g->attrib, "collider.atFlags"))
-				&& sscanf(ss, "atFlags %X", &atFlags) != 1
-			) fail("error: attrib '%s' not hex", "collider.atFlags");
+			   && sscanf(ss, "atFlags %X", &atFlags) != 1
+			)
+				fail("error: attrib '%s' not hex", "collider.atFlags");
 			
 			if ((ss = strstr(g->attrib, "collider.acFlags"))
-				&& sscanf(ss, "acFlags %X", &acFlags) != 1
-			) fail("error: attrib '%s' not hex", "collider.acFlags");
+			   && sscanf(ss, "acFlags %X", &acFlags) != 1
+			)
+				fail("error: attrib '%s' not hex", "collider.acFlags");
 			
 			if ((ss = strstr(g->attrib, "collider.maskA"))
-				&& sscanf(ss, "maskA %X", &maskA) != 1
-			) fail("error: attrib '%s' not hex", "collider.maskA");
+			   && sscanf(ss, "maskA %X", &maskA) != 1
+			)
+				fail("error: attrib '%s' not hex", "collider.maskA");
 			
 			if ((ss = strstr(g->attrib, "collider.maskB"))
-				&& sscanf(ss, "maskB %X", &maskB) != 1
-			) fail("error: attrib '%s' not hex", "collider.maskB");
+			   && sscanf(ss, "maskB %X", &maskB) != 1
+			)
+				fail("error: attrib '%s' not hex", "collider.maskB");
 			
 			/* these are all only 8-bit values */
 			type &= 255;
@@ -473,13 +518,13 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 				me->center_y = round((bounds->min_y + bounds->max_y)*0.5f);
 				me->center_z = round((bounds->min_z + bounds->max_z)*0.5f);
 				me->radius =
-				round(
-					(fabs(bounds->min_x - bounds->max_x)
-					+ fabs(bounds->min_y - bounds->max_y)
-					+ fabs(bounds->min_z - bounds->max_z)) /*sum diameter*/
-					* 0.3333333f /* average diameter */
-					* 0.5f /* radius = half diameter */
-				);
+					round(
+						(fabs(bounds->min_x - bounds->max_x)
+							+ fabs(bounds->min_y - bounds->max_y)
+							+ fabs(bounds->min_z - bounds->max_z)) /*sum diameter*/
+						* 0.3333333f /* average diameter */
+						* 0.5f /* radius = half diameter */
+					);
 				me->scale = 1000 / scale;
 				me->joint = joint;
 				me->boneIndex = bounds->boneIndex;
@@ -497,17 +542,23 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 				fail("error: '%s' too many joints", g->name);
 			}
 			/* print count */
-			fprintf(docs, "#define  JOINTCOUNT_%s  %d\n"
-				, Canitize(name, 1), idx
+			document_assign(
+				name
+				, NULL
+				, idx
+				, T_JOINTCOUNT
 			);
+			// fprintf(docs, "#define  JOINTCOUNT_%s  %d\n"
+			// 	, Canitize(name, 1), idx
+			// );
 			/* print init */
 			{
 				shape = 0x00; /* must be 0, means sphere */
 				fprintf(docs
 					, "static const uint32_t jointlist_%s[] = {\n\t"
 					"/*TpAtAcMa    MbSp        count    */\n\t"
-					/*  TpAtAcMa    MbSp        count    */
-					/*0x06000919, 0x10000000, 0x00000006,*/
+				        /*  TpAtAcMa    MbSp        count    */
+				        /*0x06000919, 0x10000000, 0x00000006,*/
 					"0x%02X%02X%02X%02X, 0x%02X%02X%02X%02X, 0x%08X, "
 					, Canitize(name, 0)
 					, type, atFlags, acFlags, maskA
@@ -516,23 +567,23 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 				);
 			}
 			/* print list */
-			fprintf(docs, "\n\t""(uintptr_t)(uint32_t[%d]){\n", idx * 9);
-			fprintf(docs, "\t\t""/*bodyFlags touchFlags  touchFx     bumpFlags   bumpFx      tchBmpBdy     jj00xxxx    yyyyzzzz    rrrrssss*/\n");
+			fprintf(docs, "\n\t" "(uintptr_t)(uint32_t[%d]){\n", idx * 9);
+			fprintf(docs, "\t\t" "/*bodyFlags touchFlags  touchFx     bumpFlags   bumpFx      tchBmpBdy     jj00xxxx    yyyyzzzz    rrrrssss*/\n");
 			for (int i = 0; i < idx; ++i)
 			{
 				fprintf(docs, "\t\t");
 				me = list + i;
 				/*fprintf(stderr, "[%d] = {\n\t.dim = {\n\t\t.joint = %d\n\t\t"
-					", .center = { %d, %d, %d }\n\t\t"
-					", .radius = %d\n\t\t"
-					", .scale = %d\n\t}\n}\n"
-					, me->joint - 1
-					, me->joint
-					, me->center_x, me->center_y, me->center_z
-					, me->radius
-					, me->scale
-				);*/
-				int16_t  j, x, y, z, rad, size;
+				        ", .center = { %d, %d, %d }\n\t\t"
+				        ", .radius = %d\n\t\t"
+				        ", .scale = %d\n\t}\n}\n"
+				        , me->joint - 1
+				        , me->joint
+				        , me->center_x, me->center_y, me->center_z
+				        , me->radius
+				        , me->scale
+				   );*/
+				int16_t j, x, y, z, rad, size;
 				
 				j = me->joint;
 				x = me->center_x;
@@ -541,12 +592,12 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 				rad = me->radius;
 				size = me->scale;
 				
-				/* 00 */fprintf(docs, "0x%08X, ", me->bodyFlags);
-				/* 04 */fprintf(docs, "0x%08X, ", me->touchFlags);
-				/* 08 */fprintf(docs, "0x%08X, ", me->touchFx);
-				/* 0C */fprintf(docs, "0x%08X, ", me->bumpFlag);
-				/* 10 */fprintf(docs, "0x%08X, ", me->bumpFx);
-				/* 14 */fprintf(docs, "0x%08X, ", me->tchBmpBdy);
+				/* 00 */ fprintf(docs, "0x%08X, ", me->bodyFlags);
+				/* 04 */ fprintf(docs, "0x%08X, ", me->touchFlags);
+				/* 08 */ fprintf(docs, "0x%08X, ", me->touchFx);
+				/* 0C */ fprintf(docs, "0x%08X, ", me->bumpFlag);
+				/* 10 */ fprintf(docs, "0x%08X, ", me->bumpFx);
+				/* 14 */ fprintf(docs, "0x%08X, ", me->tchBmpBdy);
 				/* 18 */
 				
 				fprintf(docs, "0x%08X, ", (j << 24) | (x & 0xFFFF));
@@ -556,44 +607,44 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 					fprintf(docs, ",");
 				fprintf(docs, "\n");
 			}
-			fprintf(docs, "\t""}\n};\n");
-   /*bodyFlags touchFlag   touchFx     bumpFlag    bumpFX      tchBmpBdy     jj00xxxx    yyyyzzzz    rad size
- 0 0x00000000, 0x00000000, 0x00000000, 0xFFCFFFFF, 0x00000000, 0x00010000, 0x01000000, 0x00000000, 0x000C0064,
- 1 0x00000000, 0x00000000, 0x00000000, 0xFFCFFFFF, 0x00000000, 0x00010100, 0x02000C80, 0x00000000, 0x000A0064,
- 2 0x00000000, 0x00000000, 0x00000000, 0xFFCFFFFF, 0x00000000, 0x00010100, 0x030004B0, 0x00000000, 0x000A0064,
- 3 0x00000000, 0x00000000, 0x00000000, 0xFFCFFFFF, 0x00000000, 0x00010000, 0x04000A8C, 0x00000000, 0x000A0064,
- 4 0x00000000, 0x00000000, 0x00000000, 0xFFCFFFFF, 0x00000000, 0x00010100, 0x050004B0, 0x00000000, 0x000A0064*/
+			fprintf(docs, "\t" "}\n};\n");
+			/*bodyFlags touchFlag   touchFx     bumpFlag    bumpFX      tchBmpBdy     jj00xxxx    yyyyzzzz    rad size
+			   0 0x00000000, 0x00000000, 0x00000000, 0xFFCFFFFF, 0x00000000, 0x00010000, 0x01000000, 0x00000000, 0x000C0064,
+			   1 0x00000000, 0x00000000, 0x00000000, 0xFFCFFFFF, 0x00000000, 0x00010100, 0x02000C80, 0x00000000, 0x000A0064,
+			   2 0x00000000, 0x00000000, 0x00000000, 0xFFCFFFFF, 0x00000000, 0x00010100, 0x030004B0, 0x00000000, 0x000A0064,
+			   3 0x00000000, 0x00000000, 0x00000000, 0xFFCFFFFF, 0x00000000, 0x00010000, 0x04000A8C, 0x00000000, 0x000A0064,
+			   4 0x00000000, 0x00000000, 0x00000000, 0xFFCFFFFF, 0x00000000, 0x00010100, 0x050004B0, 0x00000000, 0x000A0064*/
 			
 			/* print callback code */
 /*
-void jointmap_%s(uintptr_t func, int limb, void *jointlist)
-{
-	typedef void fptr(int, void *);
-	fptr *exec = (fptr*)(func);
-	switch (limb)
-	{
-		case 0xdead:
-			exec(0x8000, list);
-			exec(0x8001, list);
-			break;
-		case 0xbeef:
-			exec(0x7000, list);
-			exec(0x7001, list);
-			break;
-	}
-}*/
-			fprintf(docs,
-			"#define jointmap_%s(...) (jointmap_%s)((uintptr_t)__VA_ARGS__)\n"
+   void jointmap_%s(uintptr_t func, int limb, void *jointlist)
+   {
+        typedef void fptr(int, void *);
+        fptr *exec = (fptr*)(func);
+        switch (limb)
+        {
+                case 0xdead:
+                        exec(0x8000, list);
+                        exec(0x8001, list);
+                        break;
+                case 0xbeef:
+                        exec(0x7000, list);
+                        exec(0x7001, list);
+                        break;
+        }
+   }*/
+			fprintf(docs
+				, "#define jointmap_%s(...) (jointmap_%s)((uintptr_t)__VA_ARGS__)\n"
 				, Canitize(name, 0), Canitize(name, 0)
 			);
-			fprintf(docs,
-			"static void (jointmap_%s)(uintptr_t func, int limb, void *list)\n"
-			"{\n"
-			INDENT"typedef void fptr(int, void *);\n"
-			INDENT"fptr *exec = (fptr*)(func);\n"
-			INDENT"switch (limb)\n"
-			INDENT"{\n"
-			, Canitize(name, 0)
+			fprintf(docs
+				, "static void (jointmap_%s)(uintptr_t func, int limb, void *list)\n"
+				"{\n"
+				INDENT "typedef void fptr(int, void *);\n"
+				INDENT "fptr *exec = (fptr*)(func);\n"
+				INDENT "switch (limb)\n"
+				INDENT "{\n"
+				, Canitize(name, 0)
 			);
 			colliderJoint_boneIndex_ascend(list, idx);
 			for (int i = 0; i < idx; ++i)
@@ -601,17 +652,17 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 				if (!i || list[i-1].boneIndex != list[i].boneIndex)
 				{
 					if (i)
-						fprintf(docs, "\n"INDENT INDENT"break;\n");
-					fprintf(docs, INDENT"case %d:", list[i].boneIndex+1);
+						fprintf(docs, "\n"INDENT INDENT "break;\n");
+					fprintf(docs, INDENT "case %d:", list[i].boneIndex+1);
 				}
-				fprintf(docs, "\n"INDENT INDENT"%s(%d, %s);"
+				fprintf(docs, "\n"INDENT INDENT "%s(%d, %s);"
 					, "exec"
 					, list[i].joint
 					, "list"
 				);
 			}
-			fprintf(docs, "\n"INDENT INDENT"break;\n");
-			fprintf(docs, INDENT"}\n}\n");
+			fprintf(docs, "\n"INDENT INDENT "break;\n");
+			fprintf(docs, INDENT "}\n}\n");
 		} /* joint / joints */
 		else if (streq(Ctype, "cylinder"))
 		{
@@ -649,12 +700,12 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 			y = 0;//round((bounds->min_y + bounds->max_y)*0.5f);
 			z = 0;//round((bounds->min_z + bounds->max_z)*0.5f);
 			rad =
-			round(
-				(fabs(bounds->min_x - bounds->max_x)
-				+ fabs(bounds->min_z - bounds->max_z)) /*sum diameter*/
-				* 0.5f /* average diameter */
-				* 0.5f /* radius = half diameter */
-			);
+				round(
+					(fabs(bounds->min_x - bounds->max_x)
+						+ fabs(bounds->min_z - bounds->max_z)) /*sum diameter*/
+					* 0.5f /* average diameter */
+					* 0.5f /* radius = half diameter */
+				);
 			height = round((bounds->max_y - bounds->min_y));
 			yshift = round(bounds->min_y);
 			
@@ -664,8 +715,8 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 				fprintf(docs
 					, "static const uint32_t cylinder_%s[] = {\n\t"
 					"/*TpAtAcMa    MbSp      */\n\t"
-					/*  TpAtAcMa    MbSp     */
-					/*0x06000919, 0x10000000,*/
+				        /*  TpAtAcMa    MbSp     */
+				        /*0x06000919, 0x10000000,*/
 					"0x%02X%02X%02X%02X, 0x%02X%02X%02X%02X,\n\t"
 					, Canitize(name, 0)
 					, type, atFlags, acFlags, maskA
@@ -675,12 +726,12 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 			
 			/* ColliderBodyInit */
 			fprintf(docs, "/*bodyFlags touchFlags  touchFx     bumpFlags   bumpFx      tchBmpBdy     rrrrhhhh    ssssxxxx    yyyyzzzz*/\n\t");
-			/* 00 */fprintf(docs, "0x%08X, ", me->bodyFlags);
-			/* 04 */fprintf(docs, "0x%08X, ", me->touchFlags);
-			/* 08 */fprintf(docs, "0x%08X, ", me->touchFx);
-			/* 0C */fprintf(docs, "0x%08X, ", me->bumpFlag);
-			/* 10 */fprintf(docs, "0x%08X, ", me->bumpFx);
-			/* 14 */fprintf(docs, "0x%08X, ", me->tchBmpBdy);
+			/* 00 */ fprintf(docs, "0x%08X, ", me->bodyFlags);
+			/* 04 */ fprintf(docs, "0x%08X, ", me->touchFlags);
+			/* 08 */ fprintf(docs, "0x%08X, ", me->touchFx);
+			/* 0C */ fprintf(docs, "0x%08X, ", me->bumpFlag);
+			/* 10 */ fprintf(docs, "0x%08X, ", me->bumpFx);
+			/* 14 */ fprintf(docs, "0x%08X, ", me->tchBmpBdy);
 			/* 18 */
 			
 			fprintf(docs, "0x%08X, ", ((rad & 0xFFFF) << 16) | (height & 0xFFFF));
@@ -697,7 +748,7 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 //	if (!zobj_FILE)
 //		fail("failed to open out file for writing");
 //	if (!(zobj = vfopen_FILE(zobj_FILE, 512*1024/*512kb*/, wow_fwrite, die)))
-	if (!(zobj = vfopen_delayed(out, outMode, 512*1024/*512kb*/, wow_fwrite, die, wow_fopen)))
+	if (!(zobj = vfopen_delayed(out, outMode, 512*1024 /*512kb*/, wow_fwrite, die, wow_fopen)))
 		fail(ERR_NOMEM);
 	
 	/* mark all materials as unused here */
@@ -736,7 +787,7 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 	
 	/* write textures and palettes to out file */
 	if (!texture_writeTextures(zobj, obj)
-		|| !texture_writePalettes(zobj, obj)
+	   || !texture_writePalettes(zobj, obj)
 	)
 		fail(texture_errmsg());
 	
@@ -774,10 +825,16 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 		if (!collision_write(zobj, g, baseOfs, &headOfs))
 			fail(collision_errmsg());
 		
-		fprintf(docs, DOCS_DEF "COLL_" DOCS_SPACE " 0x%08X\n"
-			, Canitize(g->name + strlen("collision."), 1)
+		document_assign(
+			g->name + strlen("collision.")
+			, NULL
 			, baseOfs + headOfs
-		);		
+			, T_COLL
+		);
+		// fprintf(docs, DOCS_DEF "COLL_" DOCS_SPACE " 0x%08X\n"
+		// 	, Canitize(g->name + strlen("collision."), 1)
+		// 	, baseOfs + headOfs
+		// );
 //		fprintf(docs, "'%s' : 0x%08X\n", g->name, baseOfs + headOfs);
 	}
 	
@@ -796,8 +853,8 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 		 * the mesh does not have a 'NOSPLIT' attrib
 		 */
 		if (g->hasWeight/*g->hasDeforms*/
-			&& !g->skeleton->parent
-			&& (!g->attrib || !strstr(g->attrib, "NOSPLIT"))
+		   && !g->skeleton->parent
+		   && (!g->attrib || !strstr(g->attrib, "NOSPLIT"))
 		)
 		{
 			struct objex_skeleton *sk;
@@ -817,7 +874,7 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 					, free
 					, &headerOffset
 					, &proxyArray
-				))
+					))
 					fail(zobj_errmsg());
 				
 				if (proxyArray)
@@ -846,15 +903,15 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 		
 		/* unwritten groups, Pbodies, whole undivided meshes */
 		debugf("%s no udata\n", g->name);
-		if (g->hasWeight/*g->hasDeforms*/ && g->fOwns)
+		if (g->hasWeight /*g->hasDeforms*/ && g->fOwns)
 		{
 			debugf("%s hasDeforms\n", g->name);
 			/*if (!objex_group_matrixBones(obj, g))
-				debugf("%s\n", objex_errmsg());
-			else
-			{
-				zobj_indexSkeleton(g->skeleton, calloc, free);
-			}*/
+			        debugf("%s\n", objex_errmsg());
+			   else
+			   {
+			        zobj_indexSkeleton(g->skeleton, calloc, free);
+			   }*/
 			struct objex_skeleton *sk;
 			
 			/* successfully divided */
@@ -865,7 +922,7 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 					, sk
 					, calloc
 					, free
-				))
+					))
 					fail(zobj_errmsg());
 				
 #if 0 /* TODO pLimb causes bloat with things like Link's fist etc */
@@ -873,7 +930,7 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 				static int wow = 0;
 				if (!wow)
 				{
-					fprintf(docs, "\n""typedef struct skLimb {\n"
+					fprintf(docs, "\n" "typedef struct skLimb {\n"
 						"   struct {\n"
 						"      float x, y, z;\n"
 						"   } loc;\n"
@@ -883,7 +940,7 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 					wow = 1;
 				}
 				fprintf(docs
-					, "\n""struct skLimb %s_limb[] = {"
+					, "\n" "struct skLimb %s_limb[] = {"
 					, g->name
 				);
 				/* TODO move this elsewhere */
@@ -931,6 +988,7 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 		struct zobjProxyArray *p = proxyArrayList[i];
 		/* unnesting no longer necessary? leave it this way for safety */
 		zobjProxyArray_unnest(zobj, p, baseOfs);
+		
 		if (!zobjProxyArray_print(docs, zobj, p, baseOfs))
 			fail(zobj_errmsg());
 		zobjProxyArray_free(p);
@@ -945,6 +1003,35 @@ void jointmap_%s(uintptr_t func, int limb, void *jointlist)
 	
 	/* make sure zobj is 16-byte aligned */
 	vfalign(zobj, 16);
+	
+	/* header/linker output to stdout */
+	if (namHeader && !strcmp(namHeader, "-"))
+		header = stdout;
+	if (namLinker && !strcmp(namLinker, "-"))
+		linker = stdout;
+	
+	if (namHeader && !namLinker)
+	{
+		if (!header)
+			header = fopen(namHeader, "w");
+		document_mergeDefineHeader(header);
+	}
+	else if (namHeader && namLinker)
+	{
+		if (!header)
+			header = fopen(namHeader, "w");
+		if (!linker)
+			linker = fopen(namLinker, "w");
+		
+		/* write header and linker in separate steps in case either is stdout */
+		document_mergeExternHeader(header, 0, NULL);
+		document_mergeExternHeader(0, linker, NULL);
+	}
+	document_free();
+	if (header && header != stdout && header != stderr)
+		fclose(header);
+	if (linker && linker != stdout && linker != stderr)
+		fclose(linker);
 	
 L_cleanup:
 	/* cleanup */
@@ -970,7 +1057,7 @@ const char *z64convert_flavor(void)
 		, "now 1000000% more open source"
 		, "thank you Dragorn for writing the blender plugin"
 	};
-
+	
 	srand(time(NULL));
 	return ben[rand()%(sizeof(ben)/sizeof(*ben))];
 }

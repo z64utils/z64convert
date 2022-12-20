@@ -7,6 +7,8 @@
 #include <wow_gui.h>
 #include <wow_clipboard.h>
 
+#include "doc.h"
+
 #include "z64convert.h"
 
 static int gui_errors = 0;
@@ -29,7 +31,7 @@ enum vtype
 #define BPAD 4     /* image border padding */
 #define BP(X) ((X)+BPAD)
 
-#define PROG_NAME_VER_ATTRIB NAME" "VERSION" "AUTHOR
+#define PROG_NAME_VER_ATTRIB NAME " "VERSION " "AUTHOR
 
 static struct
 {
@@ -58,15 +60,15 @@ static inline void wantValue(char *label, void *value, enum vtype type)
 	wowGui_column_width(WIDTH_2);
 	switch (type)
 	{
-		case VTYPE_HEX:
-			wowGui_hex(value);
-			break;
-		case VTYPE_FLOAT:
-			wowGui_float(value);
-			break;
-		case VTYPE_STRING:
-			wowGui_textbox(value, VTYPE_STRING_SZ);
-			break;
+	case VTYPE_HEX:
+		wowGui_hex(value);
+		break;
+	case VTYPE_FLOAT:
+		wowGui_float(value);
+		break;
+	case VTYPE_STRING:
+		wowGui_textbox(value, VTYPE_STRING_SZ);
+		break;
 	}
 	wowGui_column_width(8*3);
 	if (type == VTYPE_STRING)
@@ -85,7 +87,7 @@ void gui_output(char *output_text)
 {
 #define OUTWINW (356 + (356 / 4))
 #define OUTWINH (152 * 3)
-	wowGui_bind_init(NAME" output", OUTWINW, OUTWINH);
+	wowGui_bind_init(NAME " output", OUTWINW, OUTWINH);
 	
 	wow_windowicon(1);
 	
@@ -99,52 +101,52 @@ void gui_output(char *output_text)
 		
 		if (wowGui_bind_should_redraw())
 		{
-		/* draw */
-		wowGui_viewport(0, 0, OUTWINW, OUTWINH);
-		wowGui_padding(8, 8);
-		
-		static struct wowGui_window win = {
-			.rect = {
-				.x = 0
-				, .y = 0
-				, .w = OUTWINW
-				, .h = OUTWINH
-			}
-			, .color = 0x301818FF
-		};
-		static struct wowGui_window copy2clipboard = {
-			.rect = {
-				.x = 0
-				, .y = 0
-				, .w = 8 * (strlen("[Copy to clipboard]")-1) + 8 * 2
-				, .h = 16 + 8
-			}
-			, .color = 0x301818FF
-			, .not_scrollable = 1
-			, .scroll_valuebox = 1
-		};
-		copy2clipboard.rect.x = OUTWINW - copy2clipboard.rect.w - 8;
-		
-		if (wowGui_window(&win))
-		{
-			wowGui_columns(1);
+			/* draw */
+			wowGui_viewport(0, 0, OUTWINW, OUTWINH);
+			wowGui_padding(8, 8);
 			
-			wowGui_column_width(OUTWINW);
+			static struct wowGui_window win = {
+				.rect = {
+					.x = 0
+					, .y = 0
+					, .w = OUTWINW
+					, .h = OUTWINH
+				}
+				, .color = 0x301818FF
+			};
+			static struct wowGui_window copy2clipboard = {
+				.rect = {
+					.x = 0
+					, .y = 0
+					, .w = 8 * (strlen("[Copy to clipboard]")-1) + 8 * 2
+					, .h = 16 + 8
+				}
+				, .color = 0x301818FF
+				, .not_scrollable = 1
+				, .scroll_valuebox = 1
+			};
+			copy2clipboard.rect.x = OUTWINW - copy2clipboard.rect.w - 8;
 			
-			wowGui_label(output_text);
-			
-			wowGui_window_end();
-		}
-		if (wowGui_window(&copy2clipboard))
-		{
-			if (wowGui_button("Copy to clipboard"))
+			if (wowGui_window(&win))
 			{
-				if (wowClipboard_set(output_text))
-					wowGui_dief("fatal clipboard error");
-				wowGui_infof("Log successfully copied to clipboard!");
+				wowGui_columns(1);
+				
+				wowGui_column_width(OUTWINW);
+				
+				wowGui_label(output_text);
+				
+				wowGui_window_end();
 			}
-			wowGui_window_end();
-		}
+			if (wowGui_window(&copy2clipboard))
+			{
+				if (wowGui_button("Copy to clipboard"))
+				{
+					if (wowClipboard_set(output_text))
+						wowGui_dief("fatal clipboard error");
+					wowGui_infof("Log successfully copied to clipboard!");
+				}
+				wowGui_window_end();
+			}
 		} /* wowGui_bind_should_redraw */
 		
 		wowGui_frame_end(wowGui_bind_ms());
@@ -170,7 +172,6 @@ void fnExit1(void)
 			exit(EXIT_SUCCESS);
 	}
 }
-
 
 int wow_main(argc, argv)
 {
@@ -215,6 +216,8 @@ int wow_main(argc, argv)
 		wowGui_infof("success!");
 		
 		/* retrieve docs as 0-term'd string */
+		// document_mergeDefineHeader(docs);
+		document_mergeExternHeader(NULL, docs, NULL);
 		docs_sz = ftell(docs);
 		if (!(docs_str = malloc(docs_sz + 1)))
 		{
@@ -231,6 +234,7 @@ int wow_main(argc, argv)
 		
 		/* can safely close docs now */
 		fclose(docs);
+		document_free();
 		
 		/* write output to stdout */
 		fprintf(stdout, "/* documentation */");
@@ -266,125 +270,125 @@ int wow_main(argc, argv)
 		if (wowGui_bind_should_redraw())
 		{
 			//{static int k=0;fprintf(stderr, "redraw %d\n", k++);}
-		/* draw */
-		//wowGui_bind_clear(0x804040FF);
-		
-		wowGui_viewport(0, 0, WINW, WINH);
-		wowGui_padding(8, 8);
-		
-		static struct wowGui_window win = {
-			.rect = {
-				.x = 0
-				, .y = 0
-				, .w = WINW
-				, .h = WINH - STATUSBAR_H
-			}
-			, .color = 0x301818FF
-			, .not_scrollable = 1
-			, .scroll_valuebox = 1
-		};
-		
-		static struct wowGui_window statusbar = {
-			.rect = {
-				.x = 0
-				, .y = 0 + (WINH - STATUSBAR_H)
-				, .w = WINW
-				, .h = STATUSBAR_H
-			}
-			, .color = 0x1c0e0eff
-			, .not_scrollable = 1
-			, .scroll_valuebox = 1
-		};
-		
-		if (wowGui_window(&win))
-		{
-			wowGui_row_height(20);
-			wowGui_columns(1);
+			/* draw */
+			//wowGui_bind_clear(0x804040FF);
 			
-			wowGui_column_width(8 * sizeof(PROG_NAME_VER_ATTRIB));
-			wowGui_italic(2);
-			wowGui_label(PROG_NAME_VER_ATTRIB);
-			wowGui_italic(0);
+			wowGui_viewport(0, 0, WINW, WINH);
+			wowGui_padding(8, 8);
 			
-			wowGui_columns(3);
-			wowGui_tails(1);
-			
-			/* file droppers */
-			wowGui_columns(3);
-			static struct wowGui_fileDropper in = {
-				.label = "OBJEX (in)"
-				, .labelWidth = WIDTH_1
-				, .filenameWidth = WIDTH_2
-				, .extension = "objex"
-			};
-			static struct wowGui_fileDropper out = {
-				.label = "ZOBJ  (out)"
-				, .labelWidth = WIDTH_1
-				, .filenameWidth = WIDTH_2
-				, .extension = "zobj"
-				, .isCreateMode = 1 /* ask for save file name */
-			};
-			wowGui_fileDropper(&in);
-			wowGui_fileDropper(&out);
-			wantValue("Only", g.only, VTYPE_STRING);
-			wantValue("Except", g.except, VTYPE_STRING);
-			wantValue("Address", &g.address, VTYPE_HEX);
-			wantValue("Scale", &g.scale, VTYPE_FLOAT);
-			
-			wowGui_column_width(WIDTH_2);
-			wowGui_checkbox("embed play-as data", &g.playas);
-			
-			wowGui_column_width(WIDTH_1);
-			if (wowGui_clickable("     convert"))
-			{
-				if (wowGui_fileDropper_filenameIsEmpty(&in))
-					wowGui_warnf("no input objex specified");
-				else if (wowGui_fileDropper_filenameIsEmpty(&out))
-					wowGui_warnf("no output zobj specified");
-				else
-				{
-					/* all tests passed; now construct arguments */
-					if (!args)
-						args = malloc(16 * 1024); /* 16kb is plenty */
-					sprintf(
-						args
-						, "--in \"%s\" --out \"%s\" --address 0x%08X --scale %f "
-						, in.filename, out.filename, g.address, g.scale
-					);
-					if (!empty(g.only))
-						sprintf(
-							args + strlen(args)
-							, " --only \"%s\" "
-							, g.only
-						);
-					if (!empty(g.except))
-						sprintf(
-							args + strlen(args)
-							, " --except \"%s\" "
-							, g.except
-						);
-					if (g.playas)
-						sprintf(
-							args + strlen(args)
-							, " --playas "
-						);
-					strcat(args, " --gui_errors ");
-					if (wow_system_gui(argv[0], args))
-						wowGui_warnf("something went wrong");
+			static struct wowGui_window win = {
+				.rect = {
+					.x = 0
+					, .y = 0
+					, .w = WINW
+					, .h = WINH - STATUSBAR_H
 				}
+				, .color = 0x301818FF
+				, .not_scrollable = 1
+				, .scroll_valuebox = 1
+			};
+			
+			static struct wowGui_window statusbar = {
+				.rect = {
+					.x = 0
+					, .y = 0 + (WINH - STATUSBAR_H)
+					, .w = WINW
+					, .h = STATUSBAR_H
+				}
+				, .color = 0x1c0e0eff
+				, .not_scrollable = 1
+				, .scroll_valuebox = 1
+			};
+			
+			if (wowGui_window(&win))
+			{
+				wowGui_row_height(20);
+				wowGui_columns(1);
+				
+				wowGui_column_width(8 * sizeof(PROG_NAME_VER_ATTRIB));
+				wowGui_italic(2);
+				wowGui_label(PROG_NAME_VER_ATTRIB);
+				wowGui_italic(0);
+				
+				wowGui_columns(3);
+				wowGui_tails(1);
+				
+				/* file droppers */
+				wowGui_columns(3);
+				static struct wowGui_fileDropper in = {
+					.label = "OBJEX (in)"
+					, .labelWidth = WIDTH_1
+					, .filenameWidth = WIDTH_2
+					, .extension = "objex"
+				};
+				static struct wowGui_fileDropper out = {
+					.label = "ZOBJ  (out)"
+					, .labelWidth = WIDTH_1
+					, .filenameWidth = WIDTH_2
+					, .extension = "zobj"
+					, .isCreateMode = 1 /* ask for save file name */
+				};
+				wowGui_fileDropper(&in);
+				wowGui_fileDropper(&out);
+				wantValue("Only", g.only, VTYPE_STRING);
+				wantValue("Except", g.except, VTYPE_STRING);
+				wantValue("Address", &g.address, VTYPE_HEX);
+				wantValue("Scale", &g.scale, VTYPE_FLOAT);
+				
+				wowGui_column_width(WIDTH_2);
+				wowGui_checkbox("embed play-as data", &g.playas);
+				
+				wowGui_column_width(WIDTH_1);
+				if (wowGui_clickable("     convert"))
+				{
+					if (wowGui_fileDropper_filenameIsEmpty(&in))
+						wowGui_warnf("no input objex specified");
+					else if (wowGui_fileDropper_filenameIsEmpty(&out))
+						wowGui_warnf("no output zobj specified");
+					else
+					{
+						/* all tests passed; now construct arguments */
+						if (!args)
+							args = malloc(16 * 1024); /* 16kb is plenty */
+						sprintf(
+							args
+							, "--in \"%s\" --out \"%s\" --address 0x%08X --scale %f "
+							, in.filename, out.filename, g.address, g.scale
+							);
+						if (!empty(g.only))
+							sprintf(
+								args + strlen(args)
+								, " --only \"%s\" "
+								, g.only
+								);
+						if (!empty(g.except))
+							sprintf(
+								args + strlen(args)
+								, " --except \"%s\" "
+								, g.except
+								);
+						if (g.playas)
+							sprintf(
+								args + strlen(args)
+								, " --playas "
+								);
+						strcat(args, " --gui_errors ");
+						if (wow_system_gui(argv[0], args))
+							wowGui_warnf("something went wrong");
+					}
+				}
+				
+				wowGui_window_end();
 			}
 			
-			wowGui_window_end();
-		}
-			
-		/* display flavor text */
-		if (wowGui_window(&statusbar))
-		{
-			statusbar.scroll.y = -6;
-			wowGui_label(flavor);
-			
-			wowGui_window_end();
-		}
+			/* display flavor text */
+			if (wowGui_window(&statusbar))
+			{
+				statusbar.scroll.y = -6;
+				wowGui_label(flavor);
+				
+				wowGui_window_end();
+			}
 		} /* wowGui_bind_should_redraw */
 		
 		wowGui_frame_end(wowGui_bind_ms());
