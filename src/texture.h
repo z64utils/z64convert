@@ -39,5 +39,7 @@ extern const char *texture_errmsg(void);
 extern void *texture_writeTextures(VFILE *bin, struct objex *obj);
 extern void *texture_writePalettes(VFILE *bin, struct objex *obj);
 extern void *texture_writeTexture(VFILE *bin, struct objex_texture *tex);
+struct objex_texture *texture_findMatch(struct objex_texture *needle, struct objex_texture *haystack);
+struct objex_texture *texture_copy(struct objex_texture *src);
 #endif /* TEXTURE_H_INCLUDED */
 

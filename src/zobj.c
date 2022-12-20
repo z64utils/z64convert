@@ -33,6 +33,13 @@ static FILE *getDocs(struct objex *obj)
 	return ((struct objexUdata *)obj->udata)->docs;
 }
 
+static unsigned getBase(struct objex *obj)
+{
+	if (!obj || !obj->udata)
+		return 0;
+	return ((struct objexUdata *)obj->udata)->baseOfs;
+}
+
 void objexUdataFree(void *udata_)
 {
 	struct objexUdata *udata = udata_;
@@ -758,9 +765,10 @@ static void *expand_loadtexel(
 	char tbuf[4096];
 	
 	struct mtlUdata *mtlUdata = mtl->udata;
-	struct objex *objex = mtl->objex;
-	struct objexUdata *udata = objex->udata;
 	struct objex_texture *tex = (which == '0') ? mtl->tex0 : mtl->tex1;
+	struct objex *objex = mtl->objex;
+	if (tex && tex->commonRef) { tex = tex->commonRef; objex = tex->objex; }
+	struct objexUdata *udata = objex->udata;
 	unsigned int baseOfs = udata->baseOfs;
 	o = (which == '0') ? 0 : OBJEX_GBIVAR_CMS1 - OBJEX_GBIVAR_CMS0;
 	
@@ -949,11 +957,15 @@ static void *mtl_gbi_vars(struct objex_material *mtl, char *gbi)
 	unsigned int t0palette = 0;
 	unsigned int t1palette = 0;
 	if (tex0) {
+		if (tex0->commonRef)
+			tex0 = tex0->commonRef;
 		t0 = tex0->udata;
 		t0palette = (tex0->palette) ? tex0->palette->fileOfs : 0;
 		t0palette += baseOfs;
 	}
 	if (tex1) {
+		if (tex1->commonRef)
+			tex1 = tex1->commonRef;
 		t1 = tex1->udata;
 		t1palette = (tex1->palette) ? tex1->palette->fileOfs : 0;
 		t1palette += baseOfs;
@@ -1012,7 +1024,7 @@ static void *mtl_gbi_vars(struct objex_material *mtl, char *gbi)
 	
 	if (t0)
 	{
-		unsigned int addr = t0->fileOfs + baseOfs;
+		unsigned int addr = t0->fileOfs + getBase(tex0->objex);
 		int w = tex0->w;
 		int h = tex0->h / t0->virtDiv;
 		int maskS = num2(w);
@@ -1047,7 +1059,7 @@ static void *mtl_gbi_vars(struct objex_material *mtl, char *gbi)
 	
 	if (t1)
 	{
-		unsigned int addr = t1->fileOfs + baseOfs;
+		unsigned int addr = t1->fileOfs + getBase(tex1->objex);
 		int w = tex1->w;
 		int h = tex1->h / t1->virtDiv;
 		int maskS = num2(w);

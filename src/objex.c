@@ -11,6 +11,7 @@
 
 #include "objex.h"
 #include "err.h"
+#include "texture.h"
 
 #include "ksort.h"
 #include "streq.h"
@@ -3347,11 +3348,45 @@ void objex_resolve_common(struct objex *dst, struct objex *needle, struct objex 
 	if (needle == dst || needle == haystack)
 		return;
 	
-	/* TODO for every texture within needle which also exsists
-	 *      within haystack and doesn't already exist within dst,
-	 *      copy into dst and redirect needle and haystack to dst
-	 *      (if haystack == dst, don't search dst or do the copy)
+	/* for every texture within needle which also exsists
+	 * within haystack and doesn't already exist within dst,
+	 * copy into dst and redirect needle and haystack to dst
+	 * (if haystack == dst, don't search dst or do the copy)
 	 */
+	
+	struct objex_texture *next = 0;
+	for (struct objex_texture *tex = needle->tex; tex; tex = next)
+	{
+		struct objex_texture *matchHay = texture_findMatch(tex, haystack->tex);
+		struct objex_texture *matchDst = (haystack == dst)
+			? matchHay
+			: texture_findMatch(tex, dst->tex)
+		;
+		
+		next = tex->next;
+		
+		/* no match found */
+		if (matchHay == 0 && matchDst == 0)
+			continue;
+		
+		/* haystack match doesn't already exist in dst, so copy into it */
+		if (matchHay != matchDst)
+		{
+			struct objex_texture *dup = texture_copy(matchHay);
+			
+			//fprintf(stderr, "found common texture: %s\n", dup->name);
+			
+			matchDst = dup;
+			dup->next = dst->tex;
+			dst->tex = dup;
+			dup->objex = dst;
+		}
+		
+		/* redirect matches into dst */
+		tex->commonRef = matchDst;
+		if (matchHay)
+			matchHay->commonRef = matchDst;
+	}
 }
 
 void objex_resolve_common_array(struct objex *dst, struct objex *src[], int srcNum)
@@ -3419,6 +3454,11 @@ void objex_free(struct objex *objex, void free(void *))
 	for (struct objex_texture *tex = objex->tex; tex; tex = next)
 	{
 		next = tex->next;
+		if (tex->copyOf)
+		{
+			free(tex);
+			continue;
+		}
 		if (tex->name) free(tex->name);
 		if (tex->instead) free(tex->instead);
 		if (tex->filename) free(tex->filename);

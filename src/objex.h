@@ -143,6 +143,8 @@ struct objex_texture
 	void *udata;
 	struct objex_texture *next;
 	struct objex_palette *palette;
+	struct objex_texture *commonRef;
+	struct objex_texture *copyOf;
 	struct objex *objex;
 	OBJ_NAMECONST char *filename;  /* filename used for loading texture */
 	char *format;    /* custom format string */

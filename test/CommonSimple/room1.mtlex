@@ -3,6 +3,7 @@
 exportid 1671492832.841119
 newtex "RGBA16_0200FFA0.tga"
 map textures\RGBA16_0200FFA0.tga
+format rgba16
 newmtl "Material"
 vertexshading normal
 texel0 "RGBA16_0200FFA0.tga"
@@ -20,6 +21,7 @@ gbi _loadtexels
 gbi gsDPSetTileSize(G_TX_RENDERTILE, 0, 0, qu102(_texel0width-1), qu102(_texel0height-1))
 newtex "RGBA16_0200CFA0.tga"
 map textures\RGBA16_0200CFA0.tga
+format rgba16
 newmtl "Material.003"
 vertexshading normal
 texel0 "RGBA16_0200CFA0.tga"
