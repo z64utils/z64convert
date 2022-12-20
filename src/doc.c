@@ -239,15 +239,17 @@ void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o) {
 	document_t* doc = sDocumentHead;
 	char* basename = document_basename();
 	
-	fprintf(
-		header,
-		"#ifndef __%s_H__\n"
-		"#define __%s_H__\n\n",
-		Canitize(basename, 1),
-		Canitize(basename, 1)
-	);
+	if (header)
+		fprintf(
+			header,
+			"#ifndef __%s_H__\n"
+			"#define __%s_H__\n\n",
+			Canitize(basename, 1),
+			Canitize(basename, 1)
+		);
 	
-	while (doc)	{
+	for ( ; doc; doc = doc->next)
+	{
 		// Utilize buffer for alignment
 		char buffer[512];
 		
@@ -278,8 +280,14 @@ void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o) {
 					txt,
 					doc->offset
 				);
-		} else if (doc->type & DOC_SPACE2) {
-			if (doc->type & DOC_INT && (doc->type & 0xF) == T_SKEL)	{
+		}
+		else if (doc->type & DOC_SPACE2)
+		{
+			if (!header)
+				continue;
+			
+			if (doc->type & DOC_INT && (doc->type & 0xF) == T_SKEL)
+			{
 				char* typeTable[] = {
 					"WOW_",
 					"MTL_",
@@ -305,8 +313,14 @@ void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o) {
 					doc->offset
 				);
 			}
-		} else if (doc->type & DOC_ENUM) {
-			if (doc->type & T_ENUM) {
+		}
+		else if (doc->type & DOC_ENUM)
+		{
+			if (!header)
+				continue;
+			
+			if (doc->type & T_ENUM)
+			{
 				if (doc->offset == 0)
 					fprintf(header, "\ntypedef enum {\n");
 				else
@@ -321,13 +335,12 @@ void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o) {
 				free(skelname);
 			}
 		}
-		
-		doc = doc->next;
 	}
 	
-	fprintf(
-		header,
-		"\n#endif /* __%s_H__ */\n",
-		Canitize(basename, 1)
-	);
+	if (header)
+		fprintf(
+			header,
+			"\n#endif /* __%s_H__ */\n",
+			Canitize(basename, 1)
+		);
 }

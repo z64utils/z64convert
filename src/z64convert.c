@@ -245,10 +245,10 @@ const char *z64convert(
 	unsigned int baseOfs = 0x06000000;
 	struct objex *obj = 0;
 	int playAs = 0;
-	const char *namHeader = NULL;
-	const char *namLinker = NULL;
-	FILE *header = NULL;
-	FILE *linker = NULL;
+	const char *namHeader = 0;
+	const char *namLinker = 0;
+	FILE *header = 0;
+	FILE *linker = 0;
 	
 	for (int i = 1; i < argc; ++i)
 	{
@@ -1003,21 +1003,33 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 	/* make sure zobj is 16-byte aligned */
 	vfalign(zobj, 16);
 	
+	/* header/linker output to stdout */
+	if (namHeader && !strcmp(namHeader, "-"))
+		header = stdout;
+	if (namLinker && !strcmp(namLinker, "-"))
+		linker = stdout;
+	
 	if (namHeader && !namLinker)
 	{
-		header = fopen(namHeader, "w");
+		if (!header)
+			header = fopen(namHeader, "w");
 		document_mergeDefineHeader(header);
 	}
 	else if (namHeader && namLinker)
 	{
-		header = fopen(namHeader, "w");
-		linker = fopen(namLinker, "w");
-		document_mergeExternHeader(header, linker, NULL);
+		if (!header)
+			header = fopen(namHeader, "w");
+		if (!linker)
+			linker = fopen(namLinker, "w");
+		
+		/* write header and linker in separate steps in case either is stdout */
+		document_mergeExternHeader(header, 0, NULL);
+		document_mergeExternHeader(0, linker, NULL);
 	}
 	document_free();
-	if (header)
+	if (header && header != stdout && header != stderr)
 		fclose(header);
-	if (linker)
+	if (linker && linker != stdout && linker != stderr)
 		fclose(linker);
 	
 L_cleanup:
