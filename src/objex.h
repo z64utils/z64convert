@@ -67,6 +67,7 @@ enum objex_gbivar /* NOTE: do not change order! */
 
 struct objex;
 struct objex_g;
+struct objex_file;
 
 typedef void (*objex_udata_free)(void *);
 
@@ -89,6 +90,7 @@ extern struct objex *objex_load(
 	, enum objex_flag flags
 );
 extern const char *objex_errmsg(void);
+extern void *objex_divide(struct objex *objex, FILE *docs);
 extern void objex_localize(struct objex *objex);
 extern void objex_resolve_common(struct objex *dst, struct objex *needle, struct objex *haystack);
 extern void objex_resolve_common_array(struct objex *dst, struct objex *src[], int srcNum);
@@ -133,6 +135,7 @@ struct objex_palette
 	int colorsNum;
 	int colorsSize;
 	unsigned int fileOfs;
+	unsigned int pointer; /* pointer override */
 	int isUsed;
 	int index; /* Nth item initialized, starting at 0 (order created) */
 };
@@ -145,6 +148,7 @@ struct objex_texture
 	struct objex_palette *palette;
 	struct objex_texture *commonRef;
 	struct objex_texture *copyOf;
+	struct objex_file *file;
 	struct objex *objex;
 	OBJ_NAMECONST char *filename;  /* filename used for loading texture */
 	char *format;    /* custom format string */
@@ -153,6 +157,7 @@ struct objex_texture
 	OBJ_NAMECONST char *instead;   /* file to use pixel data from instead */
 	void *pix;       /* rgba pixel data */
 	int isUsed;
+	int isMultiFile;
 	int alwaysUsed;
 	int alwaysUnused;
 	int priority;
@@ -175,6 +180,7 @@ struct objex_material
 	struct objex_material *next;
 	struct objex_texture *tex0;
 	struct objex_texture *tex1;
+	struct objex_file *file;
 	struct objex *objex;
 	OBJ_NAMECONST char *name;
 	char *gbi;
@@ -185,6 +191,7 @@ struct objex_material
 	int isUsed;
 	int isStandalone;
 	int isEmpty;
+	int isMultiFile;
 	int alwaysUsed;
 	int hasWritten;
 	int priority;
@@ -310,6 +317,7 @@ struct objex_g
 	struct objex_f *f;
 	struct objex *objex;
 	struct objex_bone *bone;
+	struct objex_file *file;
 	struct objex_skeleton *skeleton;
 	OBJ_NAMECONST char *name;
 	char *attrib;
@@ -329,6 +337,16 @@ struct objex_g
 	int priority;
 };
 
+/* file */
+struct objex_file
+{
+	OBJ_NAMECONST char *name;
+	struct objex_g *head;
+	struct objex *objex;
+	unsigned int baseOfs;
+	int isCommon;
+};
+
 /* a parsed objex file */
 struct objex
 {
@@ -343,18 +361,21 @@ struct objex
 	struct objex_texture *tex;
 	struct objex_palette *pal;
 	struct objex_g *g;
+	struct objex_file *file;
 	char *mtllibDir; /* directory of mtllib (used for texture fopen) */
 	int vNum;
 	int vnNum;
 	int vtNum;
 	int vcNum;
 	int gNum;
+	int fileNum;
 	int mtlNum;
 	struct
 	{
 		char *animation_framerate;
 	} softinfo;
 	struct objexString *string;
+	unsigned int baseOfs;
 };
 #endif /* OBJEX_H_INCLUDED */
 

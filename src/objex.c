@@ -2312,6 +2312,7 @@ struct objex *objex_load(
 	struct objex_g *g = 0;
 	struct objex_material *mtl = 0;
 	struct objex_f *fPrev = 0;
+	struct objex_file *file = 0;
 	error_reason = ERR_NONE;
 	int weightless = 0;
 	int weighted = 0;
@@ -2353,6 +2354,8 @@ struct objex *objex_load(
 			objex->vtNum++;
 		else if (streq24(ss, "vc "))
 			objex->vcNum++;
+		else if (streq32(ss, "file "))
+			objex->fileNum++;
 		else if (streq32(ss, "version ") && (hasVersion = 1)
 			&& sscanf(ss, "version %d.%d", &version, &versionMajor) != 2
 		)
@@ -2414,18 +2417,20 @@ struct objex *objex_load(
 	objex->vnNum += !objex->vnNum;
 	objex->vtNum += !objex->vtNum;
 	objex->vcNum += !objex->vcNum;
+	objex->fileNum += !objex->fileNum;
 	
-	/* allocate v, vn, vt */
+	/* allocate v, vn, vt, vc, file */
 	if (
 		!(objex->v = calloc(objex->vNum, sizeof(*objex->v)))
 		|| !(objex->vn = calloc(objex->vnNum, sizeof(*objex->vn)))
 		|| !(objex->vt = calloc(objex->vtNum, sizeof(*objex->vt)))
 		|| !(objex->vc = calloc(objex->vcNum, sizeof(*objex->vc)))
+		|| !(file = objex->file = calloc(objex->fileNum, sizeof(*objex->file)))
 	)
 		fail(ERR_NOMEM);
 	
 	/* parse raw obj */
-	objex->vNum = objex->vnNum = objex->vtNum = objex->vcNum = 0;
+	objex->fileNum = objex->vNum = objex->vnNum = objex->vtNum = objex->vcNum = 0;
 	lineNum = 1;
 	for (const char *ss = raw; ss; (ss = nextlineNum(ss, &lineNum)))
 	{
@@ -2543,6 +2548,36 @@ struct objex *objex_load(
 			vc->g = g;
 			vc->b = b;
 			vc->a = a;
+		}
+		else if (streq32(ss, "file "))
+		{
+			const char *tmp;
+			const char *comm;
+			int ssLen = strcspn(ss, "\r\n");
+			file = objex->file + objex->fileNum;
+			objex->fileNum++;
+			
+			/* fetch name */
+			if (!(tmp = nexttok_linerem(ss, 1)))
+				return errmsg(
+					"could not fetch file name from '%.*s'"
+					, ssLen, ss
+				);
+			if (!(file->name = strdup(tmp)))
+				fail(ERR_NOMEM);
+			
+			/* address */
+			if ((tmp = nexttok_linerem(ss, 2)) && !sscanf(tmp, "%x", &file->baseOfs))
+				return errmsg(
+					"could not fetch hexadecimal address from '%.*s'"
+					, ssLen, ss
+				);
+			//fprintf(stderr, "baseOfs = %08x\n", file->baseOfs);
+			
+			/* common */
+			/* TODO: fail if more than one file marked common? */
+			if ((comm = strstr(ss, "common")) && comm < ss + ssLen)
+				file->isCommon = 1;
 		}
 		else if (streq32(ss, "useskel "))
 		{
@@ -2692,6 +2727,7 @@ struct objex *objex_load(
 				fail0(0);
 			
 			/* zero-initialize */
+			g->file = file;
 			weightless = 0;
 			weighted = 0;
 			fPrev = 0;
@@ -2954,6 +2990,11 @@ struct objex *objex_load(
 			mtl = material_find(objex, name);
 			if (!mtl)
 				fail("could not find material '%s'", name);
+			
+			/* same material spans multiple files */
+			if (mtl->file && mtl->file != file)
+				mtl->isMultiFile = 1;
+			mtl->file = file;
 		}
 		else if (flags & OBJEX_UNKNOWN_DIRECTIVES)
 			fail("unknown directive '%.*s'", strcspn(ss, " \n"), ss);
@@ -3008,6 +3049,169 @@ void objex_localize(struct objex *objex)
 	struct objex_v *v;
 	for (v = objex->v; v - objex->v < objex->vNum; ++v)
 		*v = vert_xform(v);
+}
+
+// TODO rework (omit?) the whole udata system
+extern void *zobj_initObjex(struct objex *obj, const unsigned int baseOfs, FILE *docs);
+
+static int qsortfunc_fileCommonFirst(const void *a_, const void *b_)
+{
+	const struct objex_file *a = a_, *b = b_;
+	
+	if (a->isCommon)
+		return -1;
+	
+	return 1;
+}
+
+void *objex_divide(struct objex *objex, FILE *docs)
+{
+	struct objex_file *common = 0;
+	
+	if (objex->fileNum <= 1)
+		return success;
+	
+	/* divide group list across files */
+	for (int i = 0; i < objex->fileNum; ++i)
+	{
+		struct objex_file *file = objex->file + i;
+		struct objex_g **prev = &objex->g;
+		struct objex_g *next = 0;
+		struct objex *newObj;
+		
+		/* allocate objex structure */
+		if (!(newObj = file->objex = calloc(1, sizeof(*file->objex))))
+			return errmsg(ERR_NOMEM);
+		
+		zobj_initObjex(newObj, file->baseOfs ? file->baseOfs : objex->baseOfs, docs);
+		
+		if (file->isCommon)
+		{
+			if (common)
+				return errmsg(
+					"multiple common files specified: "
+					"'%s' and '%s'"
+					, common->name, file->name
+				);
+			common = file;
+		}
+		
+		for (struct objex_g *g = objex->g; g; g = next)
+		{
+			next = g->next;
+			
+			if (g->file == file)
+			{
+				g->objex = newObj;
+				
+				/* unlink from old list */
+				if (next)
+				{
+					*prev = next;
+					prev = &next->next;
+				}
+				
+				/* link into new list */
+				g->next = file->head;
+				file->head = g;
+				newObj->gNum += 1;
+				continue;
+			}
+			
+			prev = &g->next;
+		}
+		
+		newObj->g = file->head;
+	}
+	objex->gNum = 0;
+	objex->g = 0;
+	
+	/* XXX could add logic if no common file, but then the data gets
+	 *     duplicated, defeating the purpose of storing multiple files
+	 *     in a single objex (aka such a feature has no real use-case)
+	 */
+	if (!common)
+		return errmsg("no common file specified");
+	
+	/* materials */
+	{
+		struct objex_material *next = 0;
+		
+		for (struct objex_material *m = objex->mtl; m; m = next)
+		{
+			struct objex_file *into = (m->isMultiFile || !m->file) ? common : m->file;
+			struct objex *dst = into->objex;
+			
+			next = m->next;
+			
+			if (m->tex0)
+			{
+				/* same texture spans multiple files */
+				if (m->tex0->file && m->tex0->file != into)
+					m->tex0->isMultiFile = 1;
+				m->tex0->file = into;
+			}
+			
+			if (m->tex1)
+			{
+				/* same texture spans multiple files */
+				if (m->tex1->file && m->tex1->file != into)
+					m->tex1->isMultiFile = 1;
+				m->tex1->file = into;
+			}
+			
+			m->objex = dst;
+			m->next = dst->mtl;
+			dst->mtl = m;
+			dst->mtlNum += 1;
+		}
+		
+		objex->mtl = 0;
+		objex->mtlNum = 0;
+	}
+	
+	/* textures and palettes */
+	{
+		struct objex_texture *next = 0;
+		
+		for (struct objex_texture *tex = objex->tex; tex; tex = next)
+		{
+			struct objex_file *into = (tex->isMultiFile || !tex->file) ? common : tex->file;
+			struct objex *dst = into->objex;
+			
+			next = tex->next;
+			
+			tex->objex = dst;
+			tex->next = dst->tex;
+			dst->tex = tex;
+			
+			if (tex->palette)
+			{
+				tex->palette->objex = dst;
+				tex->palette->next = dst->pal;
+				dst->pal = tex->palette;
+			}
+		}
+		
+		objex->pal = 0;
+		objex->tex = 0;
+	}
+	
+	#if 0
+	for (int i = 0; i < objex->fileNum; ++i)
+	{
+		struct objex_file *file = objex->file + i;
+		struct objex *objex = file->objex;
+		
+		fprintf(stderr, "%p %s\n", objex->g, objex->g->name);
+	}
+	fprintf(stderr, "main: %p\n", objex->g);
+	return errmsg("hey");
+	#endif
+	
+	qsort(objex->file, objex->fileNum, sizeof(*objex->file), qsortfunc_fileCommonFirst);
+	
+	return success;
 }
 
 const char *objex_errmsg(void)
@@ -3501,6 +3705,18 @@ void objex_free(struct objex *objex, void free(void *))
 	if (objex->vn) free(objex->vn);
 	if (objex->vt) free(objex->vt);
 	if (objex->vc) free(objex->vc);
+	if (objex->file)
+	{
+		for (int i = 0; i < objex->fileNum; ++i)
+		{
+			struct objex_file *file = objex->file + i;
+			if (file->name)
+				free(file->name);
+			if (file->objex)
+				objex_free(file->objex, free);
+		}
+		free(objex->file);
+	}
 	
 	/* free softinfo */
 	free_if(objex->softinfo.animation_framerate);

@@ -901,6 +901,8 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 	
 	/* get texture offset */
 	udata->fileOfs = vftell(bin);
+	if (tex->pointer == 0)
+		tex->pointer = udata->fileOfs + getBase(tex->objex);
 //	fprintf(docs, "texture '%s' %08X (%08X)\n", tex->name, (int)udata->fileOfs, (int)udata->fileSz);
 	// fprintf(docs, DOCS_DEF "TEX_" DOCS_SPACE "  0x%08X\n"
 	// 	, Canitize(pathTail(tex->name), 1)
@@ -909,7 +911,7 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 	document_assign(
 		pathTail(tex->name),
 		NULL,
-		(int)udata->fileOfs + getBase(tex->objex),
+		tex->pointer,
 		T_TEX
 	);
 	
@@ -942,8 +944,7 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 			document_assign(
 				buffer,
 				NULL,
-				(int)(udata->fileOfs
-				+ getBase(tex->objex)
+				(int)(tex->pointer
 				+ i * (udata->fileSz / udata->virtDiv)),
 				T_TEX
 			);
@@ -993,13 +994,15 @@ void *texture_writePalette(VFILE *bin, struct objex_palette *pal)
 	
 	/* write palette into file */
 	pal->fileOfs = vftell(bin);
+	if (pal->pointer == 0)
+		pal->pointer = pal->fileOfs + getBase(pal->objex);
 	color8 = pal->colors;
 	//fprintf(docs, "palette %08X (sz %d)\n", (int)pal->fileOfs, pal->colorsSize);
 	if (printPalettes)
 		document_assign(
 			int2str(pal->index),
 			NULL,
-			(int)pal->fileOfs + getBase(pal->objex),
+			pal->pointer,
 			T_PAL
 		);
 		// fprintf(docs, DOCS_DEF "PAL_" DOCS_SPACE "  0x%08X\n"

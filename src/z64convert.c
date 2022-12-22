@@ -264,6 +264,52 @@ static const char *model_commit(struct model *model)
 	if (!model)
 		fail("model_commit error: model not loaded?");
 	
+	if (model->obj->fileNum > 1)
+	{
+		const char *outFn = model->outFn;
+		struct objex *tmp = model->obj;
+		
+		for (int i = 0; i < tmp->fileNum; ++i)
+		{
+			struct objex_file *file = tmp->file + i;
+			struct objex *obj = file->objex;
+			char buf[1024];
+			int doBreak = 0;
+			
+			obj->v = tmp->v;
+			obj->vt = tmp->vt;
+			obj->vn = tmp->vn;
+			obj->vc = tmp->vc;
+			obj->vNum = tmp->vNum;
+			obj->vtNum = tmp->vtNum;
+			obj->vnNum = tmp->vnNum;
+			obj->vcNum = tmp->vcNum;
+			
+			model->obj = obj;
+			snprintf(buf, sizeof(buf), "%s_%s", outFn, file->name);
+			model->outFn = buf;
+			model->baseOfs = file->baseOfs;
+			if (model_commit(model))
+				doBreak = 1;
+			
+			obj->v = 0;
+			obj->vt = 0;
+			obj->vn = 0;
+			obj->vc = 0;
+			obj->vNum = 0;
+			obj->vtNum = 0;
+			obj->vnNum = 0;
+			obj->vcNum = 0;
+			
+			if (doBreak)
+				break;
+		}
+		
+		model->obj = tmp;
+		model->outFn = outFn;
+		return sgRval;
+	}
+	
 	const char *outMode = "wb+";
 	const char *in = model->inFn;
 	const char *out = model->outFn;
@@ -289,11 +335,6 @@ static const char *model_commit(struct model *model)
 	/* write textures and palettes to out file */
 	if (!texture_writeTextures(zobj, obj)
 	   || !texture_writePalettes(zobj, obj)
-	)
-		fail(texture_errmsg());
-	
-	/* process materials */
-	if (!texture_procMaterials(obj)
 	)
 		fail(texture_errmsg());
 	
@@ -688,6 +729,10 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 		}
 	}
 	
+	/* process materials */
+	if (!texture_procMaterials(obj))
+		fail(texture_errmsg());
+	
 	/* collider C output */
 	/* TODO @rankaisija please adapt this to use doc.c or doc.h in some way */
 	for (struct objex_g *g = obj->g; g; g = g->next)
@@ -1031,6 +1076,10 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 		}
 	}
 	
+	/* if applicable, internally divide the objex into more objex's */
+	if (!objex_divide(obj, docs))
+		fail(objex_errmsg());
+	
 L_cleanup:
 	/* cleanup */
 	m->obj = obj;
@@ -1121,7 +1170,7 @@ const char *z64convert(
 		return "'only' and 'except' cannot be used simultaneously";
 	
 	/* ad hoc multi-file test */
-	#if 1
+	#if 0
 	{
 		struct model *quicktest(const char *in, const char *out)
 		{

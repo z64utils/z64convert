@@ -330,6 +330,7 @@ void *zobj_initObjex(struct objex *obj, const unsigned int baseOfs, FILE *docs)
 	udata->free = objexUdataFree;
 	udata->baseOfs = baseOfs;
 	udata->docs = docs;
+	obj->baseOfs = baseOfs;
 	
 	return success;
 }
