@@ -18,6 +18,12 @@ static inline void showargs(void)
 	fprintf(stderr, " --except  'l,i,s,t'    * groups named in list\n");
 	fprintf(stderr, " --silent               * print only errors\n");
 	fprintf(stderr, " --print-palettes       * output palette addresses\n");
+	fprintf(stderr, " --binary-header  fndcs * embed binary header\n");
+	fprintf(stderr, "                          - f: footer instead of header\n");
+	fprintf(stderr, "                          - n: embed names for each\n");
+	fprintf(stderr, "                          - d: display lists\n");
+	fprintf(stderr, "                          - c: collisions\n");
+	fprintf(stderr, "                          - s: skeletons\n");
 	fprintf(stderr, " --header  'out.h'      * write C header (--header - for stdout)\n");
 	fprintf(stderr, " --linker  'out.ld'     * write C linker (--header - for stdout)\n");
 }

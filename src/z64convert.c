@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h> /* PATH_MAX */
+#include <stdint.h>
 #include <math.h>
 #include "objex.h"
 #include "zobj.h"
@@ -27,6 +28,7 @@
  */
 
 #include "vfile.h"
+#include "binary-header.h"
 
 static const char *sgRval = 0;
 
@@ -48,6 +50,7 @@ struct model
 
 #include <wow.h>
 int printPalettes = 0;
+enum binaryHeaderFlags binaryHeader = 0;
 
 /* DONE --only "bunnyhood,riggedmesh,etc" argument for saying to only
  *      convert the groups named (this can be a single gui textbox */
@@ -332,6 +335,11 @@ static const char *model_commit(struct model *model)
 	if (!(zobj = vfopen_delayed(out, outMode, 512*1024 /*512kb*/, wow_fwrite, die, wow_fopen)))
 		fail(ERR_NOMEM);
 	
+	/* set aside space for binary header, which will be written later */
+	if (binaryHeader && !(binaryHeader & BINHEAD_FOOTER))
+		for (int i = 0; i < BINARYHEADER_SIZE; ++i)
+			vfputc(0, zobj);
+	
 	/* write textures and palettes to out file */
 	if (!texture_writeTextures(zobj, obj)
 	   || !texture_writePalettes(zobj, obj)
@@ -542,6 +550,10 @@ static const char *model_commit(struct model *model)
 	/* play-as data */
 	if (playAs && !zobj_doPlayAsData(zobj, obj))
 		fail(zobj_errmsg());
+	
+	/* binary header */
+	if (binaryHeader)
+		binaryHeaderWrite(zobj, obj, baseOfs, binaryHeader);
 	
 	/* make sure zobj is 16-byte aligned */
 	vfalign(zobj, 16);
@@ -1134,6 +1146,13 @@ const char *z64convert(
 		}
 		else if (streq(argv[i], "--print-palettes"))
 			printPalettes = 1;
+		else if (streq(argv[i], "--binary-header"))
+		{
+			const char *rv = binaryHeaderFlagsFromString(argv[++i], &binaryHeader);
+			
+			if (rv)
+				return rv;
+		}
 		else if (streq(argv[i], "--only"))
 		{
 			only = argv[++i];

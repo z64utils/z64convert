@@ -335,6 +335,7 @@ struct objex_g
 	int hasSplit; /* has been divided into more groups */
 	int index; /* Nth item initialized, starting at 0 (order read) */
 	int priority;
+	unsigned isCollisionAddr;
 };
 
 /* file */
