@@ -108,6 +108,7 @@ extern void *objex_group_matrixBones(
 extern struct objex_g *objex_g_find(struct objex *objex, const char *name);
 extern struct objex_g *objex_g_index(struct objex *objex, const int index);
 extern void objex_g_sortByMaterialPriority(struct objex_g *g);
+extern void objex_g_get_center_radius(struct objex_g *g, float *x, float *y, float *z, float *r);
 
 /* vec3f */
 struct objex_xyz

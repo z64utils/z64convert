@@ -18,6 +18,8 @@ static inline void showargs(void)
 	fprintf(stderr, " --except  'l,i,s,t'    * groups named in list\n");
 	fprintf(stderr, " --silent               * print only errors\n");
 	fprintf(stderr, " --print-palettes       * output palette addresses\n");
+	fprintf(stderr, " --world-header 'x,y,z' * embed minimal game world headers\n");
+	fprintf(stderr, "                          - xyz: player spawn coordinates\n");
 	fprintf(stderr, " --binary-header  fndcs * embed binary header\n");
 	fprintf(stderr, "                          - f: footer instead of header\n");
 	fprintf(stderr, "                          - n: embed names for each\n");

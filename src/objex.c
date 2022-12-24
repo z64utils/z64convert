@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <inttypes.h> /* SCNo8 */
 #include <math.h> /* round */
+#include <limits.h>
 
 #include "objex.h"
 #include "err.h"
@@ -30,6 +31,16 @@ KSORT_INIT(fPvt, struct objex_f, objex_f_pvt_lt)
 static int min_int(int a, int b)
 {
 	return a < b ? a : b;
+}
+
+static inline float min4(float a, float b, float c, float d)
+{
+	return fmin(fmin(a, b), fmin(c, d));
+}
+
+static inline float max4(float a, float b, float c, float d)
+{
+	return fmax(fmax(a, b), fmax(c, d));
 }
 
 /* returns true if two strings are equal, or if the beginning
@@ -3608,6 +3619,49 @@ void objex_resolve_common_array(struct objex *dst, struct objex *src[], int srcN
 		for (int k = 0; k < srcNum; ++k)
 			objex_resolve_common(dst, src[i], src[k]);
 	}
+}
+
+void objex_g_get_center_radius(struct objex_g *g, float *x, float *y, float *z, float *r)
+{
+	struct objex_v *v = g->objex->v;
+	float xMin = INT_MAX;
+	float yMin = INT_MAX;
+	float zMin = INT_MAX;
+	float xMax = INT_MIN;
+	float yMax = INT_MIN;
+	float zMax = INT_MIN;
+	
+	if (!g || !x || !y || !z || !r)
+		return;
+	
+	*x = 0;
+	*y = 0;
+	*z = 0;
+	*r = 0;
+	
+#define DO_BOUNDS(V, X, FUNC) \
+	V = FUNC( \
+		V \
+		, v[f->v.x].X \
+		, v[f->v.y].X \
+		, v[f->v.z].X \
+	)
+	for (struct objex_f *f = g->f; f < g->f + g->fNum; ++f)
+	{
+		DO_BOUNDS(xMin, x, min4);
+		DO_BOUNDS(yMin, y, min4);
+		DO_BOUNDS(zMin, z, min4);
+		
+		DO_BOUNDS(xMax, x, max4);
+		DO_BOUNDS(yMax, y, max4);
+		DO_BOUNDS(zMax, z, max4);
+	}
+	
+	*x = (xMin + xMax) / 2;
+	*y = (yMin + yMax) / 2;
+	*z = (zMin + zMax) / 2;
+	*r = max4(0, xMax - xMin, yMax - yMin, zMax - zMin);
+#undef DO_BOUNDS
 }
 
 void objex_free(struct objex *objex, void free(void *))

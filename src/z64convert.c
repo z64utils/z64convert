@@ -29,6 +29,7 @@
 
 #include "vfile.h"
 #include "binary-header.h"
+#include "world-header.h"
 
 static const char *sgRval = 0;
 
@@ -46,6 +47,7 @@ struct model
 	unsigned baseOfs;
 	int playAs;
 	void (*die)(const char *fmt, ...);
+	int isScene;
 };
 
 #include <wow.h>
@@ -272,6 +274,10 @@ static const char *model_commit(struct model *model)
 		const char *outFn = model->outFn;
 		struct objex *tmp = model->obj;
 		
+		// XXX it is assumed that, in a collection such as this, one
+		//     file is a scene, and all remaining files are rooms
+		sgWorldHeader.roomNum = tmp->fileNum - 1;
+		
 		for (int i = 0; i < tmp->fileNum; ++i)
 		{
 			struct objex_file *file = tmp->file + i;
@@ -292,6 +298,7 @@ static const char *model_commit(struct model *model)
 			snprintf(buf, sizeof(buf), "%s_%s", outFn, file->name);
 			model->outFn = buf;
 			model->baseOfs = file->baseOfs;
+			model->isScene = i == 0; // first file is scene
 			if (model_commit(model))
 				doBreak = 1;
 			
@@ -310,6 +317,7 @@ static const char *model_commit(struct model *model)
 		
 		model->obj = tmp;
 		model->outFn = outFn;
+		model->isScene = 0;
 		return sgRval;
 	}
 	
@@ -325,8 +333,11 @@ static const char *model_commit(struct model *model)
 	int playAs = model->playAs;
 	FILE *docs = model->docs;
 	void (*die)(const char *fmt, ...) = model->die;
+	float scale = model->scale;
+	int isScene = model->isScene;
 	FILE *header = 0;
 	FILE *linker = 0;
+	unsigned collOfs = 0;
 	
 //	zobj_FILE = wow_fopen(out, outMode);
 //	if (!zobj_FILE)
@@ -339,6 +350,15 @@ static const char *model_commit(struct model *model)
 	if (binaryHeader && !(binaryHeader & BINHEAD_FOOTER))
 		for (int i = 0; i < BINARYHEADER_SIZE; ++i)
 			vfputc(0, zobj);
+	
+	/* set aside space for scene or room header */
+	if (sgWorldHeader.isEnabled)
+	{
+		int n = isScene ? WORLD_HEADER_SCENE_HEADER_LENGTH : WORLD_HEADER_ROOM_HEADER_LENGTH;
+		
+		for (int i = 0; i < n; ++i)
+			vfputc(0, zobj);
+	}
 	
 	/* write textures and palettes to out file */
 	if (!texture_writeTextures(zobj, obj)
@@ -386,6 +406,8 @@ static const char *model_commit(struct model *model)
 		// 	, baseOfs + headOfs
 		// );
 //		fprintf(docs, "'%s' : 0x%08X\n", g->name, baseOfs + headOfs);
+		
+		collOfs = headOfs;
 	}
 	
 //	fprintf(DSTDERR, "offset %08lX\n", vftell(zobj));
@@ -554,6 +576,22 @@ static const char *model_commit(struct model *model)
 	/* binary header */
 	if (binaryHeader)
 		binaryHeaderWrite(zobj, obj, baseOfs, binaryHeader);
+	
+	/* scene or room header */
+	if (sgWorldHeader.isEnabled)
+	{
+		// TODO error checking on these
+		if (isScene)
+			worldHeaderWriteScene(
+				zobj
+				, obj
+				, baseOfs
+				, collOfs
+				, scale
+			);
+		else
+			worldHeaderWriteRoom(zobj, obj);
+	}
 	
 	/* make sure zobj is 16-byte aligned */
 	vfalign(zobj, 16);
@@ -1149,6 +1187,13 @@ const char *z64convert(
 		else if (streq(argv[i], "--binary-header"))
 		{
 			const char *rv = binaryHeaderFlagsFromString(argv[++i], &binaryHeader);
+			
+			if (rv)
+				return rv;
+		}
+		else if (streq(argv[i], "--world-header"))
+		{
+			const char *rv = worldHeaderSetup(argv[++i]);
 			
 			if (rv)
 				return rv;
