@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h> /* PATH_MAX */
+#include <stdint.h>
 #include <math.h>
 #include "objex.h"
 #include "zobj.h"
@@ -27,16 +28,38 @@
  */
 
 #include "vfile.h"
+#include "binary-header.h"
+#include "world-header.h"
+
+static const char *sgRval = 0;
+
+struct model
+{
+	const char *inFn;
+	const char *outFn;
+	const char *namHeader;
+	const char *namLinker;
+	const char *only;
+	const char *except;
+	struct objex *obj;
+	FILE *docs;
+	float scale;
+	unsigned baseOfs;
+	int playAs;
+	void (*die)(const char *fmt, ...);
+	int isScene;
+};
 
 #include <wow.h>
 int printPalettes = 0;
+enum binaryHeaderFlags binaryHeader = 0;
 
 /* DONE --only "bunnyhood,riggedmesh,etc" argument for saying to only
  *      convert the groups named (this can be a single gui textbox */
 
 static char errstr[1024] = {0};
 #define fail(...) { \
-		rval = errstr; \
+		sgRval = errstr; \
 		if (!errstr[0]) \
 		snprintf(errstr, sizeof(errstr), __VA_ARGS__); \
 		goto L_cleanup; \
@@ -225,97 +248,418 @@ static void *retriveColliderMtlAttribs(
 	return success;
 }
 
-const char *z64convert(
-	int argc
-	, const char *argv[]
+static void model_free(struct model *model)
+{
+	if (!model)
+		fail("model_free error: model not loaded?");
+	
+	if (model->obj)
+		objex_free(model->obj, free);
+	
+	free(model);
+	
+L_cleanup:
+	return;
+}
+
+static const char *model_commit(struct model *model)
+{
+	VFILE *zobj = 0;
+	
+	if (!model)
+		fail("model_commit error: model not loaded?");
+	
+	if (model->obj->fileNum > 1)
+	{
+		const char *outFn = model->outFn;
+		struct objex *tmp = model->obj;
+		
+		// XXX it is assumed that, in a collection such as this, one
+		//     file is a scene, and all remaining files are rooms
+		sgWorldHeader.roomNum = tmp->fileNum - 1;
+		
+		for (int i = 0; i < tmp->fileNum; ++i)
+		{
+			struct objex_file *file = tmp->file + i;
+			struct objex *obj = file->objex;
+			char buf[1024];
+			int doBreak = 0;
+			
+			obj->v = tmp->v;
+			obj->vt = tmp->vt;
+			obj->vn = tmp->vn;
+			obj->vc = tmp->vc;
+			obj->vNum = tmp->vNum;
+			obj->vtNum = tmp->vtNum;
+			obj->vnNum = tmp->vnNum;
+			obj->vcNum = tmp->vcNum;
+			
+			model->obj = obj;
+			snprintf(buf, sizeof(buf), "%s_%s", outFn, file->name);
+			model->outFn = buf;
+			model->baseOfs = file->baseOfs;
+			model->isScene = i == 0; // first file is scene
+			if (model_commit(model))
+				doBreak = 1;
+			
+			obj->v = 0;
+			obj->vt = 0;
+			obj->vn = 0;
+			obj->vc = 0;
+			obj->vNum = 0;
+			obj->vtNum = 0;
+			obj->vnNum = 0;
+			obj->vcNum = 0;
+			
+			if (doBreak)
+				break;
+		}
+		
+		model->obj = tmp;
+		model->outFn = outFn;
+		model->isScene = 0;
+		return sgRval;
+	}
+	
+	const char *outMode = "wb+";
+	const char *in = model->inFn;
+	const char *out = model->outFn;
+	const char *namHeader = model->namHeader;
+	const char *namLinker = model->namLinker;
+	const char *only = model->only;
+	const char *except = model->except;
+	unsigned baseOfs = model->baseOfs;
+	struct objex *obj = model->obj;
+	int playAs = model->playAs;
+	FILE *docs = model->docs;
+	void (*die)(const char *fmt, ...) = model->die;
+	float scale = model->scale;
+	int isScene = model->isScene;
+	FILE *header = 0;
+	FILE *linker = 0;
+	unsigned collOfs = 0;
+	
+//	zobj_FILE = wow_fopen(out, outMode);
+//	if (!zobj_FILE)
+//		fail("failed to open out file for writing");
+//	if (!(zobj = vfopen_FILE(zobj_FILE, 512*1024/*512kb*/, wow_fwrite, die)))
+	if (!(zobj = vfopen_delayed(out, outMode, 512*1024 /*512kb*/, wow_fwrite, die, wow_fopen)))
+		fail(ERR_NOMEM);
+	
+	/* set aside space for binary header, which will be written later */
+	if (binaryHeader && !(binaryHeader & BINHEAD_FOOTER))
+		for (int i = 0; i < BINARYHEADER_SIZE; ++i)
+			vfputc(0, zobj);
+	
+	/* set aside space for scene or room header */
+	if (sgWorldHeader.isEnabled)
+	{
+		int n = isScene ? WORLD_HEADER_SCENE_HEADER_LENGTH : WORLD_HEADER_ROOM_HEADER_LENGTH;
+		
+		for (int i = 0; i < n; ++i)
+			vfputc(0, zobj);
+	}
+	
+	/* write textures and palettes to out file */
+	if (!texture_writeTextures(zobj, obj)
+	   || !texture_writePalettes(zobj, obj)
+	)
+		fail(texture_errmsg());
+	
+	/* write any standalone materials */
+	for (struct objex_material *mtl = obj->mtl; mtl; mtl = mtl->next)
+	{
+		/* skip any that aren't standalone or aren't used */
+		if (!mtl->isStandalone || !mtl->isUsed)
+			continue;
+		
+		if (!zobj_writeUsemtl(zobj, mtl))
+			fail(zobj_errmsg());
+	}
+	
+	/* write collision triangle meshes */
+	for (struct objex_g *g = obj->g; g; g = g->next)
+	{
+		unsigned headOfs;
+		
+		/* skip those that should be skipped */
+		if (isExcluded(g, only, except))
+			continue;
+		
+		/* skip those with names not starting with 'collision.' */
+		if (!streq(g->name, "collision."))
+			continue;
+		
+		g->hasSplit = 1; /* don't write display list */
+		/* attempt to write */
+		if (!collision_write(zobj, g, baseOfs, &headOfs))
+			fail(collision_errmsg());
+		
+		document_assign(
+			g->name + strlen("collision.")
+			, NULL
+			, baseOfs + headOfs
+			, T_COLL
+		);
+		// fprintf(docs, DOCS_DEF "COLL_" DOCS_SPACE " 0x%08X\n"
+		// 	, Canitize(g->name + strlen("collision."), 1)
+		// 	, baseOfs + headOfs
+		// );
+//		fprintf(docs, "'%s' : 0x%08X\n", g->name, baseOfs + headOfs);
+		
+		collOfs = headOfs;
+	}
+	
+//	fprintf(DSTDERR, "offset %08lX\n", vftell(zobj));
+	struct zobjProxyArray *proxyArrayList[256] = {0};
+	int proxyArrayNum = 0;
+	/* first pass: write skeletal (non-Pbody) meshes */
+	for (struct objex_g *g = obj->g; g; g = g->next)
+	{
+		/* skip non-mesh groups */
+		if (!isMesh(g))
+			continue;
+		
+		/* vertices within are divided between bones,
+		 * the referenced skeleton is not a Pbody, and
+		 * the mesh does not have a 'NOSPLIT' attrib
+		 */
+		if (g->hasWeight/*g->hasDeforms*/
+		   && !g->skeleton->parent
+		   && (!g->attrib || !strstr(g->attrib, "NOSPLIT"))
+		)
+		{
+			struct objex_skeleton *sk;
+			struct zobjProxyArray *proxyArray = 0;
+			
+			/* successfully divided */
+			if ((sk = objex_group_split(obj, g, calloc)))
+			{
+				unsigned int headerOffset = -1;
+				if (!zobj_writeSkeleton(
+					/* we don't skip actual writing if excluded; we
+					 * still run this function b/c the udata it
+					 * generates is useful */
+					isExcluded(g, only, except) ? 0 : zobj
+					, sk
+					, calloc
+					, free
+					, &headerOffset
+					, &proxyArray
+					))
+					fail(zobj_errmsg());
+				
+				if (proxyArray)
+					proxyArrayList[proxyArrayNum++] = proxyArray;
+			}
+		}
+	}
+	
+//	fprintf(DSTDERR, "offset %08lX\n", vftell(zobj));
+	/* second pass: write all other meshes */
+	for (struct objex_g *g = obj->g; g; g = g->next)
+	{
+		//fprintf(stderr, "ok '%s'\n", g->name);
+		/* skip non-mesh groups and exceptions */
+		if (!isMesh(g) || isExcluded(g, only, except))
+			continue;
+		
+		/* skip written groups and split groups */
+//		debugf("encountered '%s'\n", g->name);
+		if (zobj_g_written(g) || g->hasSplit)
+			continue;
+		
+		/* skip groups that don't own their data */
+		if (g->fOwns == 0)
+			continue;
+		
+		/* unwritten groups, Pbodies, whole undivided meshes */
+		debugf("%s no udata\n", g->name);
+		if (g->hasWeight /*g->hasDeforms*/ && g->fOwns)
+		{
+			debugf("%s hasDeforms\n", g->name);
+			/*if (!objex_group_matrixBones(obj, g))
+			        debugf("%s\n", objex_errmsg());
+			   else
+			   {
+			        zobj_indexSkeleton(g->skeleton, calloc, free);
+			   }*/
+			struct objex_skeleton *sk;
+			
+			/* successfully divided */
+			if ((sk = objex_group_split(obj, g, calloc)))
+			{
+				if (!zobj_writePbody(
+					zobj
+					, sk
+					, calloc
+					, free
+					))
+					fail(zobj_errmsg());
+				
+#if 0 /* TODO pLimb causes bloat with things like Link's fist etc */
+				/* write rankaisija's pLimb stuff */
+				static int wow = 0;
+				if (!wow)
+				{
+					fprintf(docs, "\n" "typedef struct skLimb {\n"
+						"   struct {\n"
+						"      float x, y, z;\n"
+						"   } loc;\n"
+						"   unsigned short child;\n"
+						"   unsigned short sibling;\n"
+						"} skLimb;\n");
+					wow = 1;
+				}
+				fprintf(docs
+					, "\n" "struct skLimb %s_limb[] = {"
+					, g->name
+				);
+				/* TODO move this elsewhere */
+				void ugly_quickfix(struct objex_bone *bone)
+				{
+					/* .loc, .child, .sibling */
+					fprintf(docs
+						, "\n   { { %f, %f, %f }, %d, %d}, /* %02d: %s */"
+						, bone->x
+						, bone->y
+						, bone->z
+						, bone->child ? bone->child->index : -1
+						, bone->next  ? bone->next->index  : -1
+						, bone->index
+						, bone->name
+					);
+					if (bone->child)
+						ugly_quickfix(bone->child);
+					if (bone->next)
+						ugly_quickfix(bone->next);
+				}
+				/* root bone; recursion does the rest */
+				ugly_quickfix(sk->bone);
+				fprintf(docs, "\n};\n\n");
+#endif
+			}
+		}
+		else if (!zobj_writeDlist(zobj, g, calloc, free, 0))
+		{
+			fail(zobj_errmsg());
+		}
+	}
+	
+//	fprintf(DSTDERR, "offset %08lX\n", vftell(zobj));
+	/* write animations in standard format */
+	zobj_writeStdAnims(zobj, obj);
+	
+	/* handle relocations */
+	if (!zobj_doRelocs(zobj, obj))
+		fail(zobj_errmsg());
+	
+	/* now that we've reloc'd, print proxyArrayLists */
+	for (int i = 0; i < proxyArrayNum; ++i)
+	{
+		struct zobjProxyArray *p = proxyArrayList[i];
+		/* unnesting no longer necessary? leave it this way for safety */
+		zobjProxyArray_unnest(zobj, p, baseOfs);
+		
+		if (!zobjProxyArray_print(docs, zobj, p, baseOfs))
+			fail(zobj_errmsg());
+		zobjProxyArray_free(p);
+	}
+	
+//	/* identity matrices */
+//	zobj_doIdentityMatrices(zobj, obj);
+	
+	/* play-as data */
+	if (playAs && !zobj_doPlayAsData(zobj, obj))
+		fail(zobj_errmsg());
+	
+	/* binary header */
+	if (binaryHeader)
+		binaryHeaderWrite(zobj, obj, baseOfs, binaryHeader);
+	
+	/* scene or room header */
+	if (sgWorldHeader.isEnabled)
+	{
+		// TODO error checking on these
+		if (isScene)
+			worldHeaderWriteScene(
+				zobj
+				, obj
+				, baseOfs
+				, collOfs
+				, scale
+			);
+		else
+			worldHeaderWriteRoom(zobj, obj);
+	}
+	
+	/* make sure zobj is 16-byte aligned */
+	vfalign(zobj, 16);
+	
+	/* header/linker output to stdout */
+	if (namHeader && !strcmp(namHeader, "-"))
+		header = stdout;
+	if (namLinker && !strcmp(namLinker, "-"))
+		linker = stdout;
+	
+	if (namHeader && !namLinker)
+	{
+		if (!header)
+			header = fopen(namHeader, "w");
+		document_mergeDefineHeader(header);
+	}
+	else if (namHeader && namLinker)
+	{
+		if (!header)
+			header = fopen(namHeader, "w");
+		if (!linker)
+			linker = fopen(namLinker, "w");
+		
+		/* write header and linker in separate steps in case either is stdout */
+		document_mergeExternHeader(header, 0, NULL);
+		document_mergeExternHeader(0, linker, NULL);
+	}
+	document_free();
+	if (header && header != stdout && header != stderr)
+		fclose(header);
+	if (linker && linker != stdout && linker != stderr)
+		fclose(linker);
+	
+L_cleanup:
+	/* cleanup */
+	if (zobj && vfclose(zobj))
+		fail("failed to write zobj '%s'", out);
+	return sgRval;
+}
+
+static struct model *model_load(
+	const char *in
+	, const char *out
+	, const char *namHeader
+	, const char *namLinker
+	, const char *only
+	, const char *except
+	, unsigned baseOfs
+	, float scale
 	, FILE *docs
+	, int playAs
 	, void (die)(const char *fmt, ...)
 )
 {
-	const char *rval = 0;
-//	FILE *zobj_FILE = 0;
-	VFILE *zobj = 0;
-	float scale = 1000;
+	struct model *m = calloc(1, sizeof(*m));
+	struct objex *obj;
 	
-	const char *in = 0;
-	const char *out = 0;
-	const char *outMode = "wb+";
-	const char *only = 0;
-	const char *except = 0;
-	unsigned int baseOfs = 0x06000000;
-	struct objex *obj = 0;
-	int playAs = 0;
-	const char *namHeader = 0;
-	const char *namLinker = 0;
-	FILE *header = 0;
-	FILE *linker = 0;
-	
-	for (int i = 1; i < argc; ++i)
-	{
-		if (streq(argv[i], "--in"))
-		{
-			in = argv[++i];
-			document_setFileName(argv[i]);
-		}
-		else if (streq(argv[i], "--out"))
-			out = argv[++i];
-		else if (streq(argv[i], "--scale"))
-		{
-			if (!argv[i+1]
-			   || sscanf(argv[++i], "%f", &scale) != 1
-			)
-				return "invalid arguments";
-		}
-		else if (streq(argv[i], "--address"))
-		{
-			if (!argv[i+1]
-			   || sscanf(argv[++i], "%X", &baseOfs) != 1
-			)
-				return "invalid arguments";
-		}
-		else if (streq(argv[i], "--playas"))
-			playAs = 1;
-		else if (streq(argv[i], "--silent"))
-		{         /* do nothing */
-		}
-		else if (streq(argv[i], "--print-palettes"))
-			printPalettes = 1;
-		else if (streq(argv[i], "--only"))
-		{
-			only = argv[++i];
-			if (!only)
-				return "--only incomplete";
-		}
-		else if (streq(argv[i], "--except"))
-		{
-			except = argv[++i];
-			if (!except)
-				return "--except incomplete";
-		}
-		else if (streq(argv[i], "--gui_errors"))
-		{        /* do nothing */
-			;
-		}
-		else if (streq(argv[i], "--header"))
-		{
-			namHeader = argv[++i];
-		}
-		else if (streq(argv[i], "--linker"))
-		{
-			namLinker = argv[++i];
-		}
-		else
-			fail("unknown argument '%.64s'", argv[i]);
-	}
-	
-	if (!in)
-		return "no in file specified";
-	if (!out)
-		return "no out file specified";
-	if (only && except)
-		return "'only' and 'except' cannot be used simultaneously";
-	
-	/* XXX from this point on, use fail() macro for fail conditions */
+	m->inFn = in;
+	m->outFn = out;
+	m->namHeader = namHeader;
+	m->namLinker = namLinker;
+	m->only = only;
+	m->except = except;
+	m->baseOfs = baseOfs;
+	m->playAs = playAs;
+	m->docs = docs;
+	m->scale = scale;
+	m->die = die;
 	
 	obj = objex_load(
 		wow_fopen, wow_fread, calloc, malloc, free
@@ -434,6 +778,10 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 			);
 		}
 	}
+	
+	/* process materials */
+	if (!texture_procMaterials(obj))
+		fail(texture_errmsg());
 	
 	/* collider C output */
 	/* TODO @rankaisija please adapt this to use doc.c or doc.h in some way */
@@ -744,13 +1092,6 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 			fail("unknown collider type '%s'", Ctype);
 	}
 	
-//	zobj_FILE = wow_fopen(out, outMode);
-//	if (!zobj_FILE)
-//		fail("failed to open out file for writing");
-//	if (!(zobj = vfopen_FILE(zobj_FILE, 512*1024/*512kb*/, wow_fwrite, die)))
-	if (!(zobj = vfopen_delayed(out, outMode, 512*1024 /*512kb*/, wow_fwrite, die, wow_fopen)))
-		fail(ERR_NOMEM);
-	
 	/* mark all materials as unused here */
 	for (struct objex_material *m = obj->mtl; m; m = m->next)
 		m->isUsed = m->alwaysUsed;
@@ -785,260 +1126,184 @@ gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR),\n\
 		}
 	}
 	
-	/* write textures and palettes to out file */
-	if (!texture_writeTextures(zobj, obj)
-	   || !texture_writePalettes(zobj, obj)
-	)
-		fail(texture_errmsg());
-	
-	/* process materials */
-	if (!texture_procMaterials(obj)
-	)
-		fail(texture_errmsg());
-	
-	/* write any standalone materials */
-	for (struct objex_material *mtl = obj->mtl; mtl; mtl = mtl->next)
-	{
-		/* skip any that aren't standalone or aren't used */
-		if (!mtl->isStandalone || !mtl->isUsed)
-			continue;
-		
-		if (!zobj_writeUsemtl(zobj, mtl))
-			fail(zobj_errmsg());
-	}
-	
-	/* write collision triangle meshes */
-	for (struct objex_g *g = obj->g; g; g = g->next)
-	{
-		unsigned headOfs;
-		
-		/* skip those that should be skipped */
-		if (isExcluded(g, only, except))
-			continue;
-		
-		/* skip those with names not starting with 'collision.' */
-		if (!streq(g->name, "collision."))
-			continue;
-		
-		g->hasSplit = 1; /* don't write display list */
-		/* attempt to write */
-		if (!collision_write(zobj, g, baseOfs, &headOfs))
-			fail(collision_errmsg());
-		
-		document_assign(
-			g->name + strlen("collision.")
-			, NULL
-			, baseOfs + headOfs
-			, T_COLL
-		);
-		// fprintf(docs, DOCS_DEF "COLL_" DOCS_SPACE " 0x%08X\n"
-		// 	, Canitize(g->name + strlen("collision."), 1)
-		// 	, baseOfs + headOfs
-		// );
-//		fprintf(docs, "'%s' : 0x%08X\n", g->name, baseOfs + headOfs);
-	}
-	
-//	fprintf(DSTDERR, "offset %08lX\n", vftell(zobj));
-	struct zobjProxyArray *proxyArrayList[256] = {0};
-	int proxyArrayNum = 0;
-	/* first pass: write skeletal (non-Pbody) meshes */
-	for (struct objex_g *g = obj->g; g; g = g->next)
-	{
-		/* skip non-mesh groups */
-		if (!isMesh(g))
-			continue;
-		
-		/* vertices within are divided between bones,
-		 * the referenced skeleton is not a Pbody, and
-		 * the mesh does not have a 'NOSPLIT' attrib
-		 */
-		if (g->hasWeight/*g->hasDeforms*/
-		   && !g->skeleton->parent
-		   && (!g->attrib || !strstr(g->attrib, "NOSPLIT"))
-		)
-		{
-			struct objex_skeleton *sk;
-			struct zobjProxyArray *proxyArray = 0;
-			
-			/* successfully divided */
-			if ((sk = objex_group_split(obj, g, calloc)))
-			{
-				unsigned int headerOffset = -1;
-				if (!zobj_writeSkeleton(
-					/* we don't skip actual writing if excluded; we
-					 * still run this function b/c the udata it
-					 * generates is useful */
-					isExcluded(g, only, except) ? 0 : zobj
-					, sk
-					, calloc
-					, free
-					, &headerOffset
-					, &proxyArray
-					))
-					fail(zobj_errmsg());
-				
-				if (proxyArray)
-					proxyArrayList[proxyArrayNum++] = proxyArray;
-			}
-		}
-	}
-	
-//	fprintf(DSTDERR, "offset %08lX\n", vftell(zobj));
-	/* second pass: write all other meshes */
-	for (struct objex_g *g = obj->g; g; g = g->next)
-	{
-		//fprintf(stderr, "ok '%s'\n", g->name);
-		/* skip non-mesh groups and exceptions */
-		if (!isMesh(g) || isExcluded(g, only, except))
-			continue;
-		
-		/* skip written groups and split groups */
-//		debugf("encountered '%s'\n", g->name);
-		if (zobj_g_written(g) || g->hasSplit)
-			continue;
-		
-		/* skip groups that don't own their data */
-		if (g->fOwns == 0)
-			continue;
-		
-		/* unwritten groups, Pbodies, whole undivided meshes */
-		debugf("%s no udata\n", g->name);
-		if (g->hasWeight /*g->hasDeforms*/ && g->fOwns)
-		{
-			debugf("%s hasDeforms\n", g->name);
-			/*if (!objex_group_matrixBones(obj, g))
-			        debugf("%s\n", objex_errmsg());
-			   else
-			   {
-			        zobj_indexSkeleton(g->skeleton, calloc, free);
-			   }*/
-			struct objex_skeleton *sk;
-			
-			/* successfully divided */
-			if ((sk = objex_group_split(obj, g, calloc)))
-			{
-				if (!zobj_writePbody(
-					zobj
-					, sk
-					, calloc
-					, free
-					))
-					fail(zobj_errmsg());
-				
-#if 0 /* TODO pLimb causes bloat with things like Link's fist etc */
-				/* write rankaisija's pLimb stuff */
-				static int wow = 0;
-				if (!wow)
-				{
-					fprintf(docs, "\n" "typedef struct skLimb {\n"
-						"   struct {\n"
-						"      float x, y, z;\n"
-						"   } loc;\n"
-						"   unsigned short child;\n"
-						"   unsigned short sibling;\n"
-						"} skLimb;\n");
-					wow = 1;
-				}
-				fprintf(docs
-					, "\n" "struct skLimb %s_limb[] = {"
-					, g->name
-				);
-				/* TODO move this elsewhere */
-				void ugly_quickfix(struct objex_bone *bone)
-				{
-					/* .loc, .child, .sibling */
-					fprintf(docs
-						, "\n   { { %f, %f, %f }, %d, %d}, /* %02d: %s */"
-						, bone->x
-						, bone->y
-						, bone->z
-						, bone->child ? bone->child->index : -1
-						, bone->next  ? bone->next->index  : -1
-						, bone->index
-						, bone->name
-					);
-					if (bone->child)
-						ugly_quickfix(bone->child);
-					if (bone->next)
-						ugly_quickfix(bone->next);
-				}
-				/* root bone; recursion does the rest */
-				ugly_quickfix(sk->bone);
-				fprintf(docs, "\n};\n\n");
-#endif
-			}
-		}
-		else if (!zobj_writeDlist(zobj, g, calloc, free, 0))
-		{
-			fail(zobj_errmsg());
-		}
-	}
-	
-//	fprintf(DSTDERR, "offset %08lX\n", vftell(zobj));
-	/* write animations in standard format */
-	zobj_writeStdAnims(zobj, obj);
-	
-	/* handle relocations */
-	if (!zobj_doRelocs(zobj, obj))
-		fail(zobj_errmsg());
-	
-	/* now that we've reloc'd, print proxyArrayLists */
-	for (int i = 0; i < proxyArrayNum; ++i)
-	{
-		struct zobjProxyArray *p = proxyArrayList[i];
-		/* unnesting no longer necessary? leave it this way for safety */
-		zobjProxyArray_unnest(zobj, p, baseOfs);
-		
-		if (!zobjProxyArray_print(docs, zobj, p, baseOfs))
-			fail(zobj_errmsg());
-		zobjProxyArray_free(p);
-	}
-	
-//	/* identity matrices */
-//	zobj_doIdentityMatrices(zobj, obj);
-	
-	/* play-as data */
-	if (playAs && !zobj_doPlayAsData(zobj, obj))
-		fail(zobj_errmsg());
-	
-	/* make sure zobj is 16-byte aligned */
-	vfalign(zobj, 16);
-	
-	/* header/linker output to stdout */
-	if (namHeader && !strcmp(namHeader, "-"))
-		header = stdout;
-	if (namLinker && !strcmp(namLinker, "-"))
-		linker = stdout;
-	
-	if (namHeader && !namLinker)
-	{
-		if (!header)
-			header = fopen(namHeader, "w");
-		document_mergeDefineHeader(header);
-	}
-	else if (namHeader && namLinker)
-	{
-		if (!header)
-			header = fopen(namHeader, "w");
-		if (!linker)
-			linker = fopen(namLinker, "w");
-		
-		/* write header and linker in separate steps in case either is stdout */
-		document_mergeExternHeader(header, 0, NULL);
-		document_mergeExternHeader(0, linker, NULL);
-	}
-	document_free();
-	if (header && header != stdout && header != stderr)
-		fclose(header);
-	if (linker && linker != stdout && linker != stderr)
-		fclose(linker);
+	/* if applicable, internally divide the objex into more objex's */
+	if (!objex_divide(obj, docs))
+		fail(objex_errmsg());
 	
 L_cleanup:
 	/* cleanup */
-	if (zobj && vfclose(zobj))
-		fail("failed to write zobj '%s'", out);
-	objex_free(obj, free);
-	return rval;
+	m->obj = obj;
+	return m;
+}
+
+const char *z64convert(
+	int argc
+	, const char *argv[]
+	, FILE *docs
+	, void (die)(const char *fmt, ...)
+)
+{
+	float scale = 1000;
+	const char *in = 0;
+	const char *out = 0;
+	const char *only = 0;
+	const char *except = 0;
+	unsigned int baseOfs = 0x06000000;
+	struct model *model = 0;
+	int playAs = 0;
+	const char *namHeader = 0;
+	const char *namLinker = 0;
+	
+	for (int i = 1; i < argc; ++i)
+	{
+		if (streq(argv[i], "--in"))
+		{
+			in = argv[++i];
+			document_setFileName(argv[i]);
+		}
+		else if (streq(argv[i], "--out"))
+			out = argv[++i];
+		else if (streq(argv[i], "--scale"))
+		{
+			if (!argv[i+1]
+			   || sscanf(argv[++i], "%f", &scale) != 1
+			)
+				return "invalid arguments";
+		}
+		else if (streq(argv[i], "--address"))
+		{
+			if (!argv[i+1]
+			   || sscanf(argv[++i], "%X", &baseOfs) != 1
+			)
+				return "invalid arguments";
+		}
+		else if (streq(argv[i], "--playas"))
+			playAs = 1;
+		else if (streq(argv[i], "--silent"))
+		{         /* do nothing */
+		}
+		else if (streq(argv[i], "--print-palettes"))
+			printPalettes = 1;
+		else if (streq(argv[i], "--binary-header"))
+		{
+			const char *rv = binaryHeaderFlagsFromString(argv[++i], &binaryHeader);
+			
+			if (rv)
+				return rv;
+		}
+		else if (streq(argv[i], "--world-header"))
+		{
+			const char *rv = worldHeaderSetup(argv[++i]);
+			
+			if (rv)
+				return rv;
+		}
+		else if (streq(argv[i], "--only"))
+		{
+			only = argv[++i];
+			if (!only)
+				return "--only incomplete";
+		}
+		else if (streq(argv[i], "--except"))
+		{
+			except = argv[++i];
+			if (!except)
+				return "--except incomplete";
+		}
+		else if (streq(argv[i], "--gui_errors"))
+		{        /* do nothing */
+			;
+		}
+		else if (streq(argv[i], "--header"))
+		{
+			namHeader = argv[++i];
+		}
+		else if (streq(argv[i], "--linker"))
+		{
+			namLinker = argv[++i];
+		}
+		else
+			fail("unknown argument '%.64s'", argv[i]);
+	}
+	
+	if (!in)
+		return "no in file specified";
+	if (!out)
+		return "no out file specified";
+	if (only && except)
+		return "'only' and 'except' cannot be used simultaneously";
+	
+	/* ad hoc multi-file test */
+	#if 0
+	{
+		struct model *quicktest(const char *in, const char *out)
+		{
+			return model_load(
+				in
+				, out
+				, namHeader
+				, namLinker
+				, only
+				, except
+				, baseOfs
+				, scale
+				, docs
+				, playAs
+				, die
+			);
+		}
+		
+		#define TESTDIR "test/CommonSimple/"
+		#define BINDIR "bin/"
+		baseOfs = 0x03000000;
+		struct model *room0 = quicktest(TESTDIR "room0.objex", BINDIR "room0.bin");
+		struct model *room1 = quicktest(TESTDIR "room1.objex", BINDIR "room1.bin");
+		baseOfs = 0x02000000;
+		struct model *common = quicktest(TESTDIR "collision.objex", BINDIR "common.bin");
+		
+		if (sgRval)
+			return sgRval;
+		
+		struct objex *rooms[] = { room0->obj, room1->obj };
+		objex_resolve_common_array(common->obj, rooms, sizeof(rooms) / sizeof(*rooms));
+		
+		if (model_commit(common) || model_commit(room0) || model_commit(room1))
+			return sgRval;
+		
+		model_free(room0);
+		model_free(room1);
+		model_free(common);
+		
+		return sgRval;
+	}
+	#endif
+	
+	/* load model */
+	if (!(model = model_load(
+			in
+			, out
+			, namHeader
+			, namLinker
+			, only
+			, except
+			, baseOfs
+			, scale
+			, docs
+			, playAs
+			, die
+		))
+		|| sgRval
+	)
+		goto L_cleanup;
+	
+	/* commit model */
+	if (model_commit(model))
+		goto L_cleanup;
+	
+	/* cleanup */
+L_cleanup:
+	model_free(model);
+	return sgRval;
 }
 
 #include <time.h>

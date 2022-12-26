@@ -324,5 +324,17 @@ static inline size_t vfalign(VFILE *bin, int alignment)
 	return vftell(bin);
 }
 
+VFILE_VISIBILITY
+size_t vfputstr(VFILE *stream, const char *str)
+{
+	return vfwrite(str, 1, strlen(str), stream);
+}
+
+VFILE_VISIBILITY
+size_t vfputstr0(VFILE *stream, const char *str)
+{
+	return vfwrite(str, 1, strlen(str) + 1, stream);
+}
+
 #endif /* VFILE_H_INCLUDED */
 

@@ -346,6 +346,47 @@ void *texture_loadAll(struct objex *obj)
 			}
 		}
 		
+		tex->sz = tex->w * tex->h * 4; /* default format is rgba8888 */
+		
+		/* do crc32 */
+		{
+			static unsigned table[256];
+			
+			/* generate table */
+			if (!table[1])
+			{
+				unsigned poly = 0xedb88320;
+				
+				for (int i = 0; i < 256; ++i)
+				{
+					unsigned crc = i;
+					
+					for (int k = 8; k > 0; --k)
+					{
+						if (crc & 1)
+							crc = (crc >> 1) ^ poly;
+						else
+							crc >>= 1;
+					}
+					
+					table[i] = crc;
+				}
+			}
+			
+			/* generate crc */
+			if (tex->crc32 == 0)
+			{
+				unsigned char *pix8 = tex->pix;
+				int len = tex->w * tex->h * 4;
+				unsigned crc = ~0;
+				
+				for (int i = 0; i < len; ++i)
+					crc = (crc >> 8) ^ table[(crc ^ pix8[i]) & 0xff];
+				
+				tex->crc32 = crc;
+			}
+		}
+		
 		if ((tex->w & 7)
 			|| (tex->h < 16 && (tex->h & 7)) /* allow heights like 42 */
 		)
@@ -804,6 +845,10 @@ void *texture_procTexture(struct objex_texture *tex)
 	if (tex->palette && tex->isUsed)
 		tex->palette->isUsed = 1;
 	
+	tex->sz = sz;
+	tex->fmt = fmt;
+	tex->bpp = bpp;
+	
 	return success;
 #undef fail
 }
@@ -825,11 +870,19 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 {
 	FILE *docs;
 	
-	if (!(docs = getDocs(tex->objex)))
-		return 0;
-	
 	if (!tex)
 		return errmsg("uninitialized texture");
+	
+	/* skip textures that live elsewhere */
+	if (tex->commonRef)
+	{
+		//fprintf(stderr, "commonRef\n");
+		tex = tex->commonRef;
+		return success;
+	}
+	
+	if (!(docs = getDocs(tex->objex)))
+		return 0;
 	
 	/* skip unused textures */
 	if (!tex->isUsed)
@@ -848,6 +901,8 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 	
 	/* get texture offset */
 	udata->fileOfs = vftell(bin);
+	if (tex->pointer == 0)
+		tex->pointer = udata->fileOfs + getBase(tex->objex);
 //	fprintf(docs, "texture '%s' %08X (%08X)\n", tex->name, (int)udata->fileOfs, (int)udata->fileSz);
 	// fprintf(docs, DOCS_DEF "TEX_" DOCS_SPACE "  0x%08X\n"
 	// 	, Canitize(pathTail(tex->name), 1)
@@ -856,7 +911,7 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 	document_assign(
 		pathTail(tex->name),
 		NULL,
-		(int)udata->fileOfs + getBase(tex->objex),
+		tex->pointer,
 		T_TEX
 	);
 	
@@ -889,8 +944,7 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 			document_assign(
 				buffer,
 				NULL,
-				(int)(udata->fileOfs
-				+ getBase(tex->objex)
+				(int)(tex->pointer
 				+ i * (udata->fileSz / udata->virtDiv)),
 				T_TEX
 			);
@@ -940,13 +994,15 @@ void *texture_writePalette(VFILE *bin, struct objex_palette *pal)
 	
 	/* write palette into file */
 	pal->fileOfs = vftell(bin);
+	if (pal->pointer == 0)
+		pal->pointer = pal->fileOfs + getBase(pal->objex);
 	color8 = pal->colors;
 	//fprintf(docs, "palette %08X (sz %d)\n", (int)pal->fileOfs, pal->colorsSize);
 	if (printPalettes)
 		document_assign(
 			int2str(pal->index),
 			NULL,
-			(int)pal->fileOfs + getBase(pal->objex),
+			pal->pointer,
 			T_PAL
 		);
 		// fprintf(docs, DOCS_DEF "PAL_" DOCS_SPACE "  0x%08X\n"
@@ -971,6 +1027,58 @@ void *texture_writePalettes(VFILE *bin, struct objex *obj)
 	}
 	
 	return success;
+}
+
+int texture_equals(const struct objex_texture *a, const struct objex_texture *b)
+{
+	//fprintf(stderr, "compare '%s' v '%s'\n", a->name, b->name);
+	
+	return a->crc32 == b->crc32
+		&& a->fmt == b->fmt
+		&& a->bpp == b->bpp
+		&& a->sz == b->sz
+		&& a->w == b->w
+		&& a->h == b->h
+		&& !memcmp(a->pix, b->pix, a->sz) // XXX overkill; comment this line if slow
+	;
+}
+
+struct objex_texture *texture_copy(struct objex_texture *src)
+{
+	struct objex_texture *dst = malloc(sizeof(*dst));
+	
+	memcpy(dst, src, sizeof(*src));
+	dst->copyOf = src;
+	
+	return dst;
+}
+
+struct objex_texture *texture_findMatch(struct objex_texture *needle, struct objex_texture *haystack)
+{
+	struct objex_texture *next = 0;
+	
+	/* exclude textures that already have matches */
+	if (needle->commonRef)
+		return 0;
+	
+	/* palettes not planned to be supported for a while */
+	if (needle->palette != 0)
+	{
+		//fprintf(stderr, "skipping b/c palette\n");
+		return 0;
+	}
+	
+	for (struct objex_texture *tex = haystack; tex; tex = next)
+	{
+		assert(tex != needle);
+		
+		if (texture_equals(needle, tex))
+			return tex;
+		
+		next = tex->next;
+	}
+	
+	return 0;
 }
 
 static void *appendMirror(char **str)
@@ -1001,6 +1109,10 @@ void *texture_procMaterials(struct objex *obj)
 			*tex0 = mat->tex0
 			, *tex1 = mat->tex1
 		;
+		if (tex0 && tex0->commonRef)
+			tex0 = tex0->commonRef;
+		if (tex1 && tex1->commonRef)
+			tex1 = tex1->commonRef;
 		struct texUdata
 			*udata0 = (tex0) ? tex0->udata : 0
 			, *udata1 = (tex1) ? tex1->udata : 0

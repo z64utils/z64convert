@@ -618,6 +618,7 @@ void *collision_write(
 	if (headOfs)
 		*headOfs = header.ofs;
 	free(vbuf);
+	g->isCollisionAddr = baseOfs + header.ofs;
 	return success;
 #undef FAIL
 }
