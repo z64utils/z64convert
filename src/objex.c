@@ -2391,7 +2391,7 @@ struct objex *objex_load(
 #ifdef NDEBUG
 	if (!hasVersion)
 		fail("no version number (please use new objex plug-in)");
-	if (version != 2 || versionMajor != 0)
+	if (version != 2)
 		fail("invalid version number %d.%d (upgrade zzconvert or plugin)"
 			, version
 			, versionMajor
