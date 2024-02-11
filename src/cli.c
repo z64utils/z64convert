@@ -17,6 +17,7 @@ static inline void showargs(void)
 	fprintf(stderr, " --only    'l,i,s,t'    * include or exclude\n");
 	fprintf(stderr, " --except  'l,i,s,t'    * groups named in list\n");
 	fprintf(stderr, " --silent               * print only errors\n");
+	//fprintf(stderr, " --docs                 * print old docs format\n"); // TODO this feature
 	fprintf(stderr, " --print-palettes       * output palette addresses\n");
 	fprintf(stderr, " --world-header 'x,y,z' * embed minimal game world headers\n");
 	fprintf(stderr, "                          - xyz: player spawn coordinates\n");
@@ -27,7 +28,7 @@ static inline void showargs(void)
 	fprintf(stderr, "                          - c: collisions\n");
 	fprintf(stderr, "                          - s: skeletons\n");
 	fprintf(stderr, " --header  'out.h'      * write C header (--header - for stdout)\n");
-	fprintf(stderr, " --linker  'out.ld'     * write C linker (--header - for stdout)\n");
+	fprintf(stderr, " --linker  'out.ld'     * write C linker (--linker - for stdout)\n");
 }
 
 int wow_main(argc, argv)

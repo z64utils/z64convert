@@ -5,6 +5,7 @@
 #include <limits.h> /* PATH_MAX */
 #include <stdint.h>
 #include <math.h>
+#include <stdbool.h>
 #include "objex.h"
 #include "zobj.h"
 #include "texture.h"
@@ -13,6 +14,26 @@
 #include "collider.h"
 #include "collision.h"
 #include "doc.h"
+
+void fprintf_safe(FILE *dst, const char *fmt, ...)
+{
+	if (!dst)
+		return;
+	
+	va_list args;
+	va_start(args, fmt);
+#if defined(_WIN32) && defined(_UNICODE)
+	char buf[4096];
+	vsprintf(buf, fmt, args);
+	wchar_t *wc = wow_utf8_to_wchar_die(buf);
+	setlocale(LC_ALL, "");
+	fwprintf(dst, L"%ls", wc);
+	free(wc);
+#else
+	vfprintf(dst, fmt, args);
+#endif
+	va_end(args);
+}
 
 #define DSTDERR docs
 
@@ -1153,6 +1174,8 @@ const char *z64convert(
 	int playAs = 0;
 	const char *namHeader = 0;
 	const char *namLinker = 0;
+	bool shouldPrintDocs = (docs == stdout || docs == stderr) ? false : true;
+	bool shouldHotfixOutput = false;
 	
 	for (int i = 1; i < argc; ++i)
 	{
@@ -1222,9 +1245,27 @@ const char *z64convert(
 		{
 			namLinker = argv[++i];
 		}
+		else if (streq(argv[i], "--docs"))
+		{
+			shouldPrintDocs = true;
+		}
 		else
 			fail("unknown argument '%.64s'", argv[i]);
 	}
+	
+	// --docs cli and gui output hotfix
+	if (shouldPrintDocs && (!namLinker || !namHeader))
+	{
+		shouldHotfixOutput = true;
+		namLinker = ".z64convert.ld";
+		namHeader = ".z64convert.h";
+	}
+	
+	// TODO this feature
+	shouldPrintDocs = true;
+	
+	if (!shouldPrintDocs)
+		docs = 0;
 	
 	if (!in)
 		return "no in file specified";
@@ -1303,6 +1344,29 @@ const char *z64convert(
 	/* cleanup */
 L_cleanup:
 	model_free(model);
+	
+	// --docs cli and gui output hotfix
+	if (shouldHotfixOutput)
+	{
+		const char *files[] = { namHeader, namLinker };
+		
+		for (int i = 0; i < 2; ++i)
+		{
+			FILE *fp;
+			for (fp = fopen(files[i], "rb"); fp; ) {
+				int c = fgetc(fp);
+				if (feof(fp))
+					break;
+				fputc(c, docs);
+			}
+			if (fp)
+				fclose(fp);
+		}
+		
+		remove(namLinker);
+		remove(namHeader);
+	}
+	
 	return sgRval;
 }
 
