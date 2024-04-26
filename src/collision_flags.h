@@ -280,7 +280,7 @@ static struct collision_flag collision_flag[] = {
 		{ "FLOOR_STEEP",
 			CF_WALL,
 			0,
-			0x30,
+			0x10,
 			0x30,
 			-1
 		},
