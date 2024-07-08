@@ -59,6 +59,7 @@ n64texconv_to_rgba8888(
 	, enum n64texconv_bpp bpp
 	, int w
 	, int h
+	, int lineSize // optional: how many 64-bit values per row
 );
 
 
