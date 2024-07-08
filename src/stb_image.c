@@ -1,5 +1,4 @@
 
-#define WOW_IMPLEMENTATION
 #include <wow.h>
 
 #define STBI_FAILURE_USERMSG 1
