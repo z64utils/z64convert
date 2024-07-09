@@ -320,6 +320,7 @@ static const char *model_commit(struct model *model)
 			model->outFn = buf;
 			model->baseOfs = file->baseOfs;
 			model->isScene = i == 0; // first file is scene
+			//model->isScene = file->baseOfs == 0x02000000; // scene segment also works fine, may revisit later
 			if (model_commit(model))
 				doBreak = 1;
 			

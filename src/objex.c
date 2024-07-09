@@ -13,6 +13,7 @@
 #include "objex.h"
 #include "err.h"
 #include "texture.h"
+#include "stretchy_buffer.h"
 
 #include "ksort.h"
 #include "streq.h"
@@ -3107,6 +3108,20 @@ void *objex_divide(struct objex *objex, FILE *docs)
 			common = file;
 		}
 		
+		// new method: filter into lists for later
+		file->g_tmp = 0;
+		for (struct objex_g *g = objex->g; g; g = g->next)
+		{
+			if (g->file == file)
+			{
+				sb_push(file->g_tmp, g);
+				g->objex = newObj;
+				newObj->gNum += 1;
+			}
+		}
+		continue;
+		
+		// old method
 		for (struct objex_g *g = objex->g; g; g = next)
 		{
 			next = g->next;
@@ -3134,6 +3149,33 @@ void *objex_divide(struct objex *objex, FILE *docs)
 		
 		newObj->g = file->head;
 	}
+	
+	// new method: a second pass unlinks from old list while constructing new lists
+	for (int i = 0; i < objex->fileNum; ++i)
+	{
+		struct objex_file *file = objex->file + i;
+		struct objex_g **tmp = file->g_tmp;
+		int count = sb_count(tmp);
+		if (count)
+			file->objex->g = file->head = tmp[0];
+		for (int k = 0; k < count; ++k)
+		{
+			struct objex_g *each = tmp[k];
+			struct objex_g *next = 0;
+			
+			if (k + 1 < count)
+				next = tmp[k + 1];
+			
+			each->next = next;
+			
+			// accounts for premature list end (0)
+			if (!next)
+				break;
+		}
+		sb_free(tmp);
+		file->g_tmp = 0;
+	}
+	
 	objex->gNum = 0;
 	objex->g = 0;
 	

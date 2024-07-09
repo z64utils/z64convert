@@ -346,6 +346,7 @@ struct objex_file
 	struct objex_g *head;
 	struct objex *objex;
 	unsigned int baseOfs;
+	struct objex_g **g_tmp;
 	int isCommon;
 };
 
