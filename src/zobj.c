@@ -481,6 +481,17 @@ compbuf_new(
 				if (vc)
 					vc = 0;
 				break;
+			
+			case OBJEX_VTXSHADE_SCALED: // scaled normals
+				if (vc) {
+					float factor = (vc->r + vc->g + vc->b) / (255 * 3.0f);
+					if (vn) {
+						vn->x *= factor;
+						vn->y *= factor;
+						vn->z *= factor;
+					}
+				}
+				break;
 				
 			case OBJEX_VTXSHADE_ALPHA:
 				if (vc) {

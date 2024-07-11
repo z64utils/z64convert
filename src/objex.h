@@ -25,6 +25,7 @@ struct objexString;
 enum objex_vertexshading
 {
 	OBJEX_VTXSHADE_NORMAL
+	, OBJEX_VTXSHADE_SCALED // scaled normals
 	, OBJEX_VTXSHADE_COLOR
     , OBJEX_VTXSHADE_ALPHA
 	, OBJEX_VTXSHADE_DYNAMIC

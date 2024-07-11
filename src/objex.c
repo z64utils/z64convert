@@ -1739,6 +1739,8 @@ if (tex && !tex->filename) \
 			
 			if (streq32(name, "normal"))
 				mtl->vertexshading = OBJEX_VTXSHADE_NORMAL;
+			else if (streq32(name, "scaled"))
+				mtl->vertexshading = OBJEX_VTXSHADE_SCALED;
 			else if (streq32(name, "color"))
 				mtl->vertexshading = OBJEX_VTXSHADE_COLOR;
 			else if (streq32(name, "alpha"))
