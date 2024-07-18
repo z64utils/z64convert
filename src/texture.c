@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "zobj.h" /* objexUdata */
 #include "texture.h"
@@ -180,6 +181,7 @@ int texture_textureFmt(struct objex_texture *tex)
 static int pathIsAbsolute(const char *path)
 {
 #ifdef _WIN32 /* win32: */
+	if (path[0] == '/' && path[1] == '/') return true; // wsl
 	return (isalpha(path[0]) && path[1] == ':');
 #else /* linux: */
 	return (*path == '/');
