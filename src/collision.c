@@ -42,7 +42,7 @@ static void *polytype_derive(struct objex_f *face, struct polytype *dst)
 			f->name_numchar = -1;
 		/* TODO use strtok_r instead */
 		/* NOTE: '-' excluded b/c it is used for angles < 0 */
-		const char *delim = " .,|#:;<>~/\\\r\n";
+		const char *delim = " .|#:;<>~/\\\r\n";
 		for (char *tok = strtok(name, delim); tok; tok = strtok(0, delim))
 		{
 //			debugf("'%s' vs '%s'\n", tok, f->name);
@@ -52,14 +52,17 @@ static void *polytype_derive(struct objex_f *face, struct polytype *dst)
 //			debugf("match '%s'\n", f->name);
 			int a0, a1, a2, invalid = 0;
 			char *arg_start = tok + f->name_numchar;
-			uint32_t lsh = MAX(f->hi, f->lo);
-			uint32_t *w = ( f->hi > f->lo ) ? &hi : &lo;
-			uint32_t and = f->and;
+			uint32_t *w = (f->word == CF_HIGH) ? &hi : &lo;
+			uint32_t bits = f->bits;
+			// derive left-shift amount from bitfield
+			uint32_t lsh = 0;
+			for (uint32_t tmp = f->bits; tmp && !(tmp & 1); tmp >>= 1)
+				lsh += 1;
 			switch (f->type)
 			{
 				case CF_WATERBOX:
 					type = CF_WATERBOX;
-					invalid = sscanf(arg_start, "_%d_%d_%d", &a0, &a1, &a2);
+					invalid = sscanf(arg_start, ",light=%d,camera=%d,room=%d", &a0, &a1, &a2);
 					if (invalid >= 2)
 					{
 						dst->hi = (a0 & 0x1F) << 8; // underwater light id 1F00
@@ -80,32 +83,49 @@ static void *polytype_derive(struct objex_f *face, struct polytype *dst)
 						// default waterbox active in all rooms
 						dst->hi = 0x0007E000;
 					}
+					hi = dst->hi;
+					lo = dst->lo;
 					invalid = 0;
 					break;
 				case CF_IGNORE:
-					v1 |= f->hi;
+					v1 |= f->bits;
 					break;
 				case CF_WARP:
 					/* TODO WARP_scene_entrance_etc */
-					invalid = sscanf(arg_start, "%d", &a0) != 1;
+					invalid = sscanf(arg_start, "exit=%d", &a0) != 1;
 					a0 += 1;
 					if (a0 <= 0)
 						return errmsg("warp < 0 means off; use value >= 0");
 					else if (a0 > 15)
 						return errmsg("warp > 15 (exceeds maximum");
-					*w |= (a0 << lsh) & and;
+					*w |= (a0 << lsh) & bits;
 					break;
 				case CF_CAMERA:
+					invalid = sscanf(arg_start, "id=%d", &a0) != 1;
+					*w |= (a0 << lsh) & bits;
+					break;
 				case CF_ECHO:
 				case CF_LIGHTING:
-					invalid = sscanf(arg_start, "%d", &a0) != 1;
-					*w |= (a0 << lsh) & and;
+					invalid = sscanf(arg_start, "value=%d", &a0) != 1;
+					*w |= (a0 << lsh) & bits;
 					break;
 				case CF_CONVEYOR:
 					v2 |= 0x2000; // set bit to enable conveyor surfaces
-					invalid = sscanf(arg_start, "%d_%d", &a1, &a0) != 2;
+					invalid = sscanf(arg_start, "direction=%d,speed=%d", &a1, &a0);
+					if (invalid == 2)
+						invalid = 0;
+					else if (invalid == 1) { // got direction, but not speed
+						// derive speed from string
+						a0 = strstr(arg_start, "NONE") ? 0
+							: strstr(arg_start, "SLOW") ? 1
+							: strstr(arg_start, "MEDIUM") ? 2
+							: strstr(arg_start, "FAST") ? 3
+							: 4 // throw error
+						;
+						invalid = 0;
+					}
 					// test speed range
-					if (a0 > 3)
+					if (a0 > 3 || a0 < 0)
 						return errmsg(
 							"collision type '%s' invalid 'speed'\n"
 							" (valid values are 0, 1, 2, 3)", tok
@@ -124,14 +144,13 @@ static void *polytype_derive(struct objex_f *face, struct polytype *dst)
 						a1 = 0x3F;
 
 					// inheritance flag, and apply other flags
-					if (strstr(tok, "INHERIT"))
+					if (strstr(tok, "inherit"))
 						*w |= 4 << lsh;
 					*w |= a0 << lsh; // speed
 					*w |= a1 << (lsh + 3); // direction
 					break;
 				default:
-					hi |= f->hi;
-					lo |= f->lo;
+					*w |= bits;
 //					debugf(" > generic\n");
 //					debugf(" > %08X %08X\n", hi, lo);
 					break;
@@ -189,7 +208,7 @@ static void tri_touch_bounds(
 	for (iter = arr; iter - arr < arrNum; ++iter)
 	{
 		/* skip if previously processed */
-		if (iter->_pvt)
+		if (iter->_pvt || iter->mtl != mtl)
 			continue;
 		
 		/* test for shared vertices */
@@ -249,7 +268,7 @@ struct boundingBox *collision_bounds(
 	/* walk every triangle */
 	for (struct objex_f *f = g->f; f - g->f < g->fNum; ++f)
 	{
-		if (f->_pvt)
+		if (f->_pvt || f->mtl != mtl)
 			continue;
 		const struct boundingBox stats = {
 			.min_x = SHRT_MAX, .max_x = SHRT_MIN
