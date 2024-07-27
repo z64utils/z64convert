@@ -390,7 +390,7 @@ static struct collision_flag collision_flag[] = {
 	// CAMERA_%d: Mesh Camera Data Index ID
 	{ "CAMERA,", /* TODO confirm working */
 		CF_CAMERA,
-		CF_LOW,
+		CF_HIGH,
 		0xFF,
 		7
 	},
