@@ -309,6 +309,7 @@ void *collision_write(
 		unsigned water_num;
 		unsigned tri_ofs;
 		unsigned tri_num;
+		unsigned camera_ofs;
 		unsigned ofs;
 	} header = {0};
 	
@@ -609,6 +610,11 @@ void *collision_write(
 		vfput16(bin, vert->z);
 	}
 	
+	/* guarantee a blank camera exists, for MM compatibility */
+	header.camera_ofs = vfalign(bin, 4);
+	vfput32(bin, 0);
+	vfput32(bin, 0);
+	
 	/* write header */
 	header.ofs = vfalign(bin, 4);
 	/*0x00*/vfput16(bin, round(world.min_x));          /* xyz min   */
@@ -624,7 +630,7 @@ void *collision_write(
 	/*0x16*/vfput16(bin, 0);                           /* padding   */
 	/*0x18*/vfput32(bin, header.tri_ofs + baseOfs);    /* ofs tris  */
 	/*0x1C*/vfput32(bin, header.ctype_ofs + baseOfs);  /* ofs types */
-	/*0x20*/vfput32(bin, 0);                           /* cameras   */
+	/*0x20*/vfput32(bin, header.camera_ofs);           /* cameras   */
 	/*0x24*/vfput16(bin, header.water_num);            /* num water */
 	/*0x26*/vfput16(bin, 0);                           /* padding   */
 	if (header.water_num)
