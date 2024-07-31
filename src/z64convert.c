@@ -1178,6 +1178,10 @@ const char *z64convert(
 	bool shouldPrintDocs = (docs == stdout || docs == stderr) ? false : true;
 	bool shouldHotfixOutput = false;
 	
+	// clear error message between invocations
+	strcpy(errstr, "");
+	sgRval = 0;
+	
 	for (int i = 1; i < argc; ++i)
 	{
 		if (streq(argv[i], "--in"))
