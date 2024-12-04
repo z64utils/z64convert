@@ -913,7 +913,7 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 	document_assign(
 		pathTail(tex->name),
 		NULL,
-		tex->pointer,
+		udata->fileOfs + getBase(tex->objex),
 		T_TEX
 	);
 	
@@ -946,7 +946,7 @@ void *texture_writeTexture(VFILE *bin, struct objex_texture *tex)
 			document_assign(
 				buffer,
 				NULL,
-				(int)(tex->pointer
+				(int)(udata->fileOfs + getBase(tex->objex)
 				+ i * (udata->fileSz / udata->virtDiv)),
 				T_TEX
 			);
@@ -1004,7 +1004,7 @@ void *texture_writePalette(VFILE *bin, struct objex_palette *pal)
 		document_assign(
 			int2str(pal->index),
 			NULL,
-			pal->pointer,
+			pal->fileOfs + getBase(pal->objex),
 			T_PAL
 		);
 		// fprintf(docs, DOCS_DEF "PAL_" DOCS_SPACE "  0x%08X\n"
