@@ -2763,6 +2763,7 @@ void *zobj_writeStdAnim(
 	{
 		char skelName[1024];
 		strcpy(skelName, Canitize(anim->sk->name, 1));
+		// queues compound variable names for doc writer
 		document_assign(
 			skelName,
 			anim->name,
@@ -2774,6 +2775,22 @@ void *zobj_writeStdAnim(
 		// 	, Canitize(anim->name, 1)
 		// 	, (int)vftell(bin) + baseOfs
 		// );
+		
+		//-------------------------------------------------------
+		// hotfix courtesy of Jinnosuke
+		// how it works:
+		// - document_mergeExternHeader() does not write compound anim names
+		// - blender does not allow multiple anims of the same name, so
+		//   compound names (e.g. gObjectSkelAnim) are not necessary for
+		//   preventing variable name conflicts
+		// - therefore,  flat names (e.g. gObjectAnim) are used instead
+		document_assign(
+			anim->name,
+			NULL,
+			(int)vftell(bin) + baseOfs,
+			T_ANIM
+		);
+		//-------------------------------------------------------
 	}
 	vfput16(bin, frames);
 	vfput16(bin, 0);
