@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include "err.h"
 #include <assert.h>
 
@@ -31,6 +32,6 @@ void document_assign(const char* textA, const char* textB, unsigned int offset, 
 void document_free();
 
 void document_mergeDefineHeader(FILE* file);
-void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o);
+void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o, bool usePrefixes);
 
 #endif
