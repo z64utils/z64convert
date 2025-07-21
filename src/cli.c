@@ -19,6 +19,8 @@ static inline void showargs(void)
 	fprintf(stderr, " --silent               * print only errors\n");
 	//fprintf(stderr, " --docs                 * print old docs format\n"); // TODO this feature
 	fprintf(stderr, " --print-palettes       * output palette addresses\n");
+	fprintf(stderr, " --no-prefixes          * don't write variable name prefixes\n");
+	fprintf(stderr, "                          - e.g. gEnWhoopee_DlFlap -> Flap\n");
 	fprintf(stderr, " --world-header 'x,y,z' * embed minimal game world headers\n");
 	fprintf(stderr, "                          - xyz: player spawn coordinates\n");
 	fprintf(stderr, " --binary-header  fndcs * embed binary header\n");
