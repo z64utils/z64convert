@@ -5,3 +5,4 @@ test/bin/*
 *.exe
 z64convert-*
 *.Identifier
+compile_flags.txt

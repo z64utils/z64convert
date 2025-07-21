@@ -67,6 +67,7 @@ struct model
 	float scale;
 	unsigned baseOfs;
 	int playAs;
+	bool usePrefixes;
 	void (*die)(const char *fmt, ...);
 	int isScene;
 };
@@ -353,6 +354,7 @@ static const char *model_commit(struct model *model)
 	unsigned baseOfs = model->baseOfs;
 	struct objex *obj = model->obj;
 	int playAs = model->playAs;
+	bool usePrefixes = model->usePrefixes;
 	FILE *docs = model->docs;
 	void (*die)(const char *fmt, ...) = model->die;
 	float scale = model->scale;
@@ -638,8 +640,8 @@ static const char *model_commit(struct model *model)
 			linker = fopen(namLinker, "w");
 		
 		/* write header and linker in separate steps in case either is stdout */
-		document_mergeExternHeader(header, 0, NULL);
-		document_mergeExternHeader(0, linker, NULL);
+		document_mergeExternHeader(header, 0, NULL, usePrefixes);
+		document_mergeExternHeader(0, linker, NULL, usePrefixes);
 	}
 	document_free();
 	if (header && header != stdout && header != stderr)
@@ -665,6 +667,7 @@ static struct model *model_load(
 	, float scale
 	, FILE *docs
 	, int playAs
+	, bool usePrefixes
 	, void (die)(const char *fmt, ...)
 )
 {
@@ -679,6 +682,7 @@ static struct model *model_load(
 	m->except = except;
 	m->baseOfs = baseOfs;
 	m->playAs = playAs;
+	m->usePrefixes = usePrefixes;
 	m->docs = docs;
 	m->scale = scale;
 	m->die = die;
@@ -1173,6 +1177,7 @@ const char *z64convert(
 	unsigned int baseOfs = 0x06000000;
 	struct model *model = 0;
 	int playAs = 0;
+	bool usePrefixes = true;
 	const char *namHeader = 0;
 	const char *namLinker = 0;
 	bool shouldPrintDocs = (docs == stdout || docs == stderr) ? false : true;
@@ -1207,6 +1212,8 @@ const char *z64convert(
 		}
 		else if (streq(argv[i], "--playas"))
 			playAs = 1;
+		else if (streq(argv[i], "--no-prefixes"))
+			usePrefixes = false;
 		else if (streq(argv[i], "--silent"))
 		{         /* do nothing */
 		}
@@ -1336,6 +1343,7 @@ const char *z64convert(
 			, scale
 			, docs
 			, playAs
+			, usePrefixes
 			, die
 		))
 		|| sgRval

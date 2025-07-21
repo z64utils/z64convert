@@ -213,7 +213,7 @@ static char* UnCanitize(const char* txt) {
 	return buf;
 }
 
-void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o) {
+void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o, bool usePrefixes) {
 	char* typeTable[] = {
 		"\0",
 		/* MTL   */ "Gfx",
@@ -255,15 +255,28 @@ void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o) {
 		
 		if (doc->type & DOC_SPACE1 && (doc->type & 0xF) != T_PAL) {
 			const char* txt = document_externify(doc->text[0]);
-			snprintf(
-				buffer,
-				sizeof(buffer) / sizeof(*buffer),
-				"%s g%s_%s%s",
-				typeTable[doc->type & 0xF],
-				UnCanitize(basename),
-				linkTable[doc->type & 0xF],
-				txt
-			);
+			if (usePrefixes)
+			{
+				snprintf(
+					buffer,
+					sizeof(buffer) / sizeof(*buffer),
+					"%s g%s_%s%s",
+					typeTable[doc->type & 0xF],
+					UnCanitize(basename),
+					linkTable[doc->type & 0xF],
+					txt
+				);
+			}
+			else
+			{
+				snprintf(
+					buffer,
+					sizeof(buffer) / sizeof(*buffer),
+					"%s %s",
+					typeTable[doc->type & 0xF],
+					txt
+				);
+			}
 			
 			if (header)
 				fprintf(
@@ -272,14 +285,29 @@ void document_mergeExternHeader(FILE* header, FILE* linker, FILE* o) {
 					buffer
 				);
 			if (linker)
-				fprintf(
-					linker,
-					"g%s_%s%s = 0x%08X;\n",
-					UnCanitize(basename),
-					linkTable[doc->type & 0xF],
-					txt,
-					doc->offset
-				);
+			{
+				if (usePrefixes)
+				{
+					fprintf(
+						linker,
+						"g%s_%s%s = 0x%08X;\n",
+						UnCanitize(basename),
+						linkTable[doc->type & 0xF],
+						txt,
+						doc->offset
+					);
+				}
+				else
+				{
+					fprintf(
+						linker,
+						"%s = 0x%08X;\n",
+						txt,
+						doc->offset
+					);
+				}
+			}
+
 		}
 		else if (doc->type & DOC_SPACE2)
 		{
