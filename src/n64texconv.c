@@ -207,6 +207,8 @@ N64_COLOR_FUNC_TO(i4)
 
 N64_COLOR_FUNC_TO(ia4)
 {
+	*b = ((color->x & 0xee) >> 4) | (color->w >> 7);
+	return;
 	/* TUNING could omit float math altogether and just use (x & 7) */
 	float f = color->x * 0.003921569f;
 	int i;
