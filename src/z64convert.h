@@ -1,5 +1,5 @@
 #define  NAME     "z64convert"
-#define  VERSION  "1.0.6"
+#define  VERSION  "1.1.0"
 #define  AUTHOR   "<z64.me>"
 
 extern void fprintf_safe(FILE *dst, const char *fmt, ...);
